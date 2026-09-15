@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services';
-import { UserProfile, LoginRequest } from '@/types';
+import { UserProfile, LoginRequest, UpdateProfileRequest } from '@/types';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  updateProfile: (data: UpdateProfileRequest) => Promise<UserProfile>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -92,6 +93,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: UpdateProfileRequest): Promise<UserProfile> => {
+    const res = await authService.updateProfile(data);
+    const updated = res.data;
+    if (updated) {
+      setUser(updated);
+      try {
+        localStorage.setItem('username', updated.username);
+      } catch {
+        // ignore
+      }
+      return updated;
+    }
+    await refreshProfile();
+    return user!;
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -107,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshProfile,
+        updateProfile,
       }}
     >
       {children}

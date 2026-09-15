@@ -28,6 +28,16 @@ export interface PostDetailResponseData {
   comments: Comment[] | null;
 }
 
+export interface PostLikeCountData {
+  post_id: number;
+  like_count: number;
+}
+
+export interface PostCommentCountData {
+  post_id: number;
+  comment_count: number;
+}
+
 export interface CreatePostRequest {
   post_title: string;
   post_content: string;

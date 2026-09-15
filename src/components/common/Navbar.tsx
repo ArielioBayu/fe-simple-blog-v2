@@ -3,10 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context';
+import { uploadService } from '@/services';
 import { ThemeToggle } from './ThemeToggle';
 
 interface NavbarProps {
   onCreatePost?: () => void;
+  onEditProfile?: () => void;
   onThemeToggled?: (theme: string) => void;
   onHomeClick?: () => void;
   showBackToFeed?: boolean;
@@ -14,12 +16,14 @@ interface NavbarProps {
 
 export function Navbar({
   onCreatePost,
+  onEditProfile,
   onThemeToggled,
   onHomeClick,
   showBackToFeed = false,
 }: NavbarProps) {
   const { user, logout } = useAuth();
   const username = user?.username || '';
+  const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
 
   return (
     <nav style={styles.nav} className="glass">
@@ -54,12 +58,28 @@ export function Navbar({
 
           {/* User Profile Badge */}
           {username && (
-            <div style={styles.userSection}>
+            <div
+              style={{
+                ...styles.userSection,
+                cursor: onEditProfile ? 'pointer' : 'default',
+              }}
+              onClick={onEditProfile}
+              title={onEditProfile ? 'Click to edit profile' : undefined}
+            >
               <div className="story-avatar-wrap" style={{ width: '40px', height: '40px' }}>
                 <div className="story-avatar-inner">
-                  <span style={styles.avatarLetter}>
-                    {username.substring(0, 2).toUpperCase()}
-                  </span>
+                  {avatarSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatarSrc}
+                      alt={username}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span style={styles.avatarLetter}>
+                      {username.substring(0, 2).toUpperCase()}
+                    </span>
+                  )}
                 </div>
               </div>
               <div style={styles.userMeta}>
@@ -98,31 +118,32 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'sticky',
     top: 0,
     zIndex: 50,
-    borderBottom: '1px solid var(--border)',
-    backgroundColor: 'var(--nav-bg)',
+    borderRadius: 0,
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
   },
   navContent: {
-    height: '68px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    height: '70px',
   },
   brandLogo: {
     display: 'flex',
     alignItems: 'center',
-    fontSize: '1.75rem',
-    fontWeight: 900,
+    fontSize: '1.45rem',
+    fontWeight: 800,
     letterSpacing: '-0.03em',
+    userSelect: 'none',
   },
   logoSimple: {
     color: 'var(--heading-color)',
-    transition: 'color 0.25s ease',
   },
   logoBlog: {
     background: 'var(--ig-gradient)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
-    marginLeft: '2px',
   },
   navActions: {
     display: 'flex',
@@ -136,14 +157,15 @@ const styles: Record<string, React.CSSProperties> = {
   userSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.6rem',
+    gap: '0.65rem',
     padding: '0.35rem 0.75rem',
     borderRadius: 'var(--radius-full)',
     backgroundColor: 'var(--btn-secondary-bg)',
     border: '1px solid var(--border)',
+    transition: 'var(--transition)',
   },
   avatarLetter: {
-    fontSize: '0.82rem',
+    fontSize: '0.85rem',
     fontWeight: 800,
     color: 'var(--heading-color)',
   },
@@ -153,12 +175,13 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.15,
   },
   userGreeting: {
-    fontSize: '0.72rem',
+    fontSize: '0.68rem',
     color: 'var(--fg-subtle)',
-    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
   userNameText: {
-    fontSize: '0.85rem',
+    fontSize: '0.86rem',
     fontWeight: 700,
     color: 'var(--heading-color)',
   },

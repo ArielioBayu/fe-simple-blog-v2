@@ -1,5 +1,12 @@
 import { apiFetch, setCookie, deleteCookie } from '@/lib/api';
-import { LoginRequest, LoginResponseData, SignUpRequest, UserProfile, ApiResponse } from '@/types';
+import {
+  LoginRequest,
+  LoginResponseData,
+  SignUpRequest,
+  UserProfile,
+  UpdateProfileRequest,
+  ApiResponse,
+} from '@/types';
 
 export const authService = {
   async signIn(data: LoginRequest): Promise<LoginResponseData> {
@@ -26,13 +33,42 @@ export const authService = {
     });
   },
 
+  /**
+   * Fetches complete user profile and dynamic stats from backend.
+   * Primary: /accounts/profile
+   * Fallback: /accounts/user or /memberships/get-user
+   */
   async getUserProfile(): Promise<UserProfile | null> {
     try {
-      const res = await apiFetch<UserProfile>('/memberships/get-user');
-      return res.data || null;
+      const res = await apiFetch<UserProfile>('/accounts/profile');
+      if (res.data) return res.data;
+    } catch {
+      // Fallback if /accounts/profile fails
+    }
+
+    try {
+      const fallbackRes = await apiFetch<UserProfile>('/accounts/user');
+      if (fallbackRes.data) return fallbackRes.data;
+    } catch {
+      // Fallback to legacy
+    }
+
+    try {
+      const legacyRes = await apiFetch<UserProfile>('/memberships/get-user');
+      return legacyRes.data || null;
     } catch {
       return null;
     }
+  },
+
+  /**
+   * Updates user profile (bio, username, avatar_url, banner_url)
+   */
+  async updateProfile(data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> {
+    return await apiFetch<UserProfile>('/accounts/edit/profile', {
+      method: 'PUT',
+      body: data,
+    });
   },
 
   logout(): void {

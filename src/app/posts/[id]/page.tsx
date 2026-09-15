@@ -11,6 +11,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const postId = resolvedParams.id;
 
   const [postData, setPostData] = useState<PostDetailResponseData | null>(null);
+  const [likeCount, setLikeCount] = useState<number | null>(null);
+  const [commentCount, setCommentCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,18 +30,30 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     setTimeout(() => setToastMessage(null), 2400);
   };
 
-  // Initial load
+  // Initial load using Modul 7 like-count and comment-count endpoints
   useEffect(() => {
     let ignore = false;
 
     async function loadPost() {
       try {
-        const res = await postService.getPostById(postId);
+        const [postRes, likeRes, commentRes] = await Promise.allSettled([
+          postService.getPostById(postId),
+          postService.getLikeCount(postId),
+          postService.getCommentCount(postId),
+        ]);
+
         if (!ignore) {
-          if (res && res.data) {
-            setPostData(res.data);
+          if (postRes.status === 'fulfilled' && postRes.value?.data) {
+            setPostData(postRes.value.data);
           } else {
             setError('Post details not found.');
+          }
+
+          if (likeRes.status === 'fulfilled' && likeRes.value?.data?.like_count !== undefined) {
+            setLikeCount(likeRes.value.data.like_count);
+          }
+          if (commentRes.status === 'fulfilled' && commentRes.value?.data?.comment_count !== undefined) {
+            setCommentCount(commentRes.value.data.comment_count);
           }
         }
       } catch (err: unknown) {
@@ -73,9 +87,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
   const refreshPost = async () => {
     try {
-      const res = await postService.getPostById(postId);
-      if (res && res.data) {
-        setPostData(res.data);
+      const [res, countRes] = await Promise.allSettled([
+        postService.getPostById(postId),
+        postService.getCommentCount(postId),
+      ]);
+      if (res.status === 'fulfilled' && res.value?.data) {
+        setPostData(res.value.data);
+      }
+      if (countRes.status === 'fulfilled' && countRes.value?.data?.comment_count !== undefined) {
+        setCommentCount(countRes.value.data.comment_count);
       }
     } catch {
       // ignore
@@ -93,6 +113,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       setTimeout(() => setIsHeartAnimating(false), 400);
     }
 
+    setLikeCount(prev => prev !== null ? Math.max(0, prev + likeDiff) : postData.liked_count + likeDiff);
+
     setPostData({
       ...postData,
       detail_post: {
@@ -105,28 +127,31 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     try {
       await activityService.toggleLike(postId, updatedIsLiked);
     } catch {
+      setLikeCount(prev => prev !== null ? Math.max(0, prev - likeDiff) : postData.liked_count);
       setPostData({
         ...postData,
         detail_post: {
           ...postData.detail_post,
           is_liked: currentLiked,
         },
-        liked_count: postData.liked_count - likeDiff,
+        liked_count: postData.liked_count,
       });
+      showToast('Failed to update like status.');
     }
   };
 
   const handleBookmarkToggle = () => {
     try {
+      const numId = Number(postId);
       const saved = localStorage.getItem('saved_posts');
       const ids: number[] = saved ? JSON.parse(saved) : [];
-      const numId = Number(postId);
+
       const next = isSaved ? ids.filter(id => id !== numId) : [...ids, numId];
       localStorage.setItem('saved_posts', JSON.stringify(next));
       setIsSaved(!isSaved);
       showToast(isSaved ? 'Removed from saved collection' : 'Saved to your collection');
     } catch {
-      // ignore
+      showToast('Failed to update bookmark');
     }
   };
 
@@ -150,6 +175,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     try {
       await commentService.createComment(postId, content);
       showToast('Comment posted!');
+      setCommentCount(prev => (prev !== null ? prev + 1 : 1));
       await refreshPost();
     } catch (err: unknown) {
       setCommentError(err instanceof Error ? err.message : 'Failed to post comment.');
@@ -196,10 +222,22 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       />
 
       <main style={styles.main} className="container">
+        {/* Navigation Breadcrumb */}
+        <div style={styles.breadcrumbBar}>
+          <Link href="/" style={styles.backBtn}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back to Feed</span>
+          </Link>
+        </div>
+
         {/* Post Detail Card */}
         <PostDetailCard
           post={detail_post}
-          likedCount={liked_count}
+          likedCount={likeCount ?? liked_count}
+          commentCount={commentCount ?? (comments ? comments.length : 0)}
           isSaved={isSaved}
           isHeartAnimating={isHeartAnimating}
           onLikeToggle={handleLikeToggle}
@@ -211,7 +249,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <section style={styles.commentsSection}>
           <div style={styles.sectionHeader}>
             <h3 style={styles.sectionTitle}>
-              Comments <span style={styles.commentCountBadge}>({comments ? comments.length : 0})</span>
+              Comments <span style={styles.commentCountBadge}>({commentCount ?? (comments ? comments.length : 0)})</span>
             </h3>
             <span style={{ fontSize: '0.85rem', color: 'var(--fg-subtle)' }}>
               Join the discussion respectfully
@@ -242,9 +280,26 @@ const styles: Record<string, React.CSSProperties> = {
   },
   main: {
     flex: 1,
-    paddingTop: '2.5rem',
+    paddingTop: '1.75rem',
     paddingBottom: '5rem',
     maxWidth: '820px',
+    width: '100%',
+  },
+  breadcrumbBar: {
+    marginBottom: '1.25rem',
+  },
+  backBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '0.88rem',
+    fontWeight: 600,
+    color: 'var(--fg-muted)',
+    padding: '0.45rem 0.95rem',
+    borderRadius: 'var(--radius-full)',
+    backgroundColor: 'var(--btn-secondary-bg)',
+    border: '1px solid var(--border)',
+    transition: 'var(--transition)',
   },
   commentsSection: {
     marginTop: '3rem',

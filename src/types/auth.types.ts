@@ -14,11 +14,30 @@ export interface LoginResponseData {
   refresh_token: string;
 }
 
+export interface UserStats {
+  stories_count: number;
+  saved_count: number;
+  likes_count: number;
+  followers_count: number;
+  following_count: number;
+}
+
 export interface UserProfile {
   id: number;
   username: string;
   email: string;
+  bio?: string;
+  avatar_url?: string;
+  banner_url?: string;
   created_at: string;
+  stats?: UserStats;
+}
+
+export interface UpdateProfileRequest {
+  username?: string;
+  bio?: string;
+  avatar_url?: string;
+  banner_url?: string;
 }
 
 export interface AuthState {

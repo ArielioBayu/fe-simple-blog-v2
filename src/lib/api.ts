@@ -1,4 +1,18 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
+const BASE_URL = API_BASE_URL;
+
+/**
+ * Resolves a backend relative media file path (e.g., "uploads/xxx.jpg")
+ * to a fully qualified browser image URL.
+ */
+export function getMediaUrl(filePath?: string | null): string | null {
+  if (!filePath || typeof filePath !== 'string') return null;
+  if (filePath.startsWith('http://') || filePath.startsWith('https://') || filePath.startsWith('data:')) {
+    return filePath;
+  }
+  const cleanPath = filePath.replace(/^\/+/, '');
+  return `${API_BASE_URL}/${cleanPath}`;
+}
 
 export interface ApiResponse<T = unknown> {
   status: number;

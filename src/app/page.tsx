@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
 import { postService, activityService } from '@/services';
-import { Navbar, Toast, StoryBar, PostCard, CreatePostModal, FeedSidebar } from '@/components';
+import { Navbar, Toast, StoryBar, PostCard, CreatePostModal, FeedSidebar, EditProfileModal } from '@/components';
 import { Post, CreatePostRequest } from '@/types';
 
 export default function FeedPage() {
@@ -23,6 +23,7 @@ export default function FeedPage() {
 
   // Modal & interactions
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [savedPostIds, setSavedPostIds] = useState<number[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [animatingPostId, setAnimatingPostId] = useState<number | null>(null);
@@ -174,6 +175,7 @@ export default function FeedPage() {
 
       <Navbar
         onCreatePost={() => setIsModalOpen(true)}
+        onEditProfile={() => setIsEditProfileOpen(true)}
         onHomeClick={() => setActiveTag('all')}
         onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)}
       />
@@ -290,6 +292,7 @@ export default function FeedPage() {
             activeTag={activeTag}
             onSelectTag={setActiveTag}
             onOpenCreateModal={() => setIsModalOpen(true)}
+            onOpenEditProfile={() => setIsEditProfileOpen(true)}
           />
         </div>
       </main>
@@ -299,6 +302,13 @@ export default function FeedPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreatePost}
+      />
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        onSuccess={() => showToast('Profile updated successfully!')}
       />
     </div>
   );

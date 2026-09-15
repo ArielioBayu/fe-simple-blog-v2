@@ -6,6 +6,7 @@ import { PostDetail } from '@/types';
 interface PostDetailCardProps {
   post: PostDetail;
   likedCount: number;
+  commentCount?: number;
   isSaved: boolean;
   isHeartAnimating: boolean;
   onLikeToggle: () => void;
@@ -16,6 +17,7 @@ interface PostDetailCardProps {
 export function PostDetailCard({
   post,
   likedCount,
+  commentCount,
   isSaved,
   isHeartAnimating,
   onLikeToggle,
@@ -38,32 +40,39 @@ export function PostDetailCard({
     }
   };
 
+  // Extract embedded image markdown if present
+  const imageMatch = post.post_content.match(/!\[.*?\]\((.*?)\)/);
+  const imageUrl = imageMatch ? imageMatch[1] : null;
+  const rawText = imageMatch ? post.post_content.replace(imageMatch[0], '').trim() : post.post_content;
+
+  // Filter valid non-empty hashtags
+  const validTags = (post.post_hashtags || [])
+    .map((t) => t.trim().replace(/^#/, ''))
+    .filter((t) => t.length > 0);
+
   return (
-    <article style={styles.postCard} className="glass">
-      {/* Post Header */}
-      <div style={styles.postHeader}>
+    <article style={styles.card} className="glass">
+      {/* Header: Author info & Share button */}
+      <div style={styles.header}>
         <div style={styles.authorRow}>
-          <div className="story-avatar-wrap" style={{ width: '48px', height: '48px' }}>
+          <div className="story-avatar-wrap" style={{ width: '46px', height: '46px' }}>
             <div className="story-avatar-inner">
-              <span style={styles.authorAvatarLetter}>
-                {post.username.substring(0, 2).toUpperCase()}
+              <span style={styles.authorLetter}>
+                {post.username ? post.username.substring(0, 2).toUpperCase() : 'U'}
               </span>
             </div>
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={styles.authorMeta}>
+            <div style={styles.authorNameRow}>
               <span style={styles.authorName}>@{post.username}</span>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="#0095F6">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="9 12 11 14 15 10" fill="none" stroke="#fff" strokeWidth="2.5"></polyline>
-              </svg>
+              <span style={styles.verifiedBadge}>✓</span>
             </div>
             <span style={styles.postDate}>{formatDate(post.created_at)}</span>
           </div>
         </div>
 
-        <button onClick={onShare} style={styles.shareBtn} title="Share Story">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button onClick={onShare} style={styles.shareBtn} title="Share Story" aria-label="Share story">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="18" cy="5" r="3"></circle>
             <circle cx="6" cy="12" r="3"></circle>
             <circle cx="18" cy="19" r="3"></circle>
@@ -73,21 +82,35 @@ export function PostDetailCard({
         </button>
       </div>
 
+      {/* Post Title */}
       <h1 style={styles.postTitle}>{post.post_title}</h1>
-      
-      <div style={styles.divider}></div>
 
-      {/* Post Content */}
-      <div style={styles.postContent}>
-        {post.post_content.split('\n').map((para, idx) => (
-          <p key={idx} style={{ marginBottom: '1.25rem' }}>{para}</p>
-        ))}
-      </div>
+      {/* Visual Cover Photo */}
+      {imageUrl && (
+        <div style={styles.coverWrapper}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt={post.post_title} style={styles.coverImg} />
+        </div>
+      )}
 
-      {/* Hashtags */}
-      {post.post_hashtags && post.post_hashtags.length > 0 && (
+      {/* Post Text / Caption Content */}
+      {rawText && (
+        <div style={styles.postContent}>
+          {rawText
+            .split('\n')
+            .filter(Boolean)
+            .map((para, idx) => (
+              <p key={idx} style={{ marginBottom: '0.85rem' }}>
+                {para}
+              </p>
+            ))}
+        </div>
+      )}
+
+      {/* Hashtags (Only render when valid tags exist) */}
+      {validTags.length > 0 && (
         <div style={styles.tagList}>
-          {post.post_hashtags.map((tag, idx) => (
+          {validTags.map((tag, idx) => (
             <span key={idx} style={styles.tagBadge}>
               #{tag}
             </span>
@@ -95,9 +118,9 @@ export function PostDetailCard({
         </div>
       )}
 
-      {/* Action Bar */}
+      {/* Action Bar (Like, Count, Bookmark) */}
       <div style={styles.actionBar}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <button
             onClick={onLikeToggle}
             style={{
@@ -105,10 +128,12 @@ export function PostDetailCard({
               color: post.is_liked ? 'var(--ig-heart)' : 'var(--fg-muted)',
             }}
             className={isHeartAnimating ? 'animate-heart-pop' : ''}
+            title={post.is_liked ? 'Unlike' : 'Like'}
+            aria-label="Like story"
           >
             <svg
-              width="26"
-              height="26"
+              width="24"
+              height="24"
               viewBox="0 0 24 24"
               fill={post.is_liked ? 'var(--ig-heart)' : 'none'}
               stroke={post.is_liked ? 'var(--ig-heart)' : 'currentColor'}
@@ -116,7 +141,7 @@ export function PostDetailCard({
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{
-                filter: post.is_liked ? 'drop-shadow(0 0 10px rgba(255, 48, 64, 0.55))' : 'none',
+                filter: post.is_liked ? 'drop-shadow(0 0 8px rgba(255, 48, 64, 0.5))' : 'none',
               }}
             >
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -125,6 +150,9 @@ export function PostDetailCard({
 
           <span style={styles.likesCount}>
             <strong>{likedCount}</strong> {likedCount === 1 ? 'person likes' : 'people like'} this story
+            {commentCount !== undefined && (
+              <> • <strong>{commentCount}</strong> {commentCount === 1 ? 'comment' : 'comments'}</>
+            )}
           </span>
         </div>
 
@@ -135,8 +163,18 @@ export function PostDetailCard({
             color: isSaved ? 'var(--secondary)' : 'var(--fg-muted)',
           }}
           title={isSaved ? 'Remove Bookmark' : 'Bookmark'}
+          aria-label="Bookmark story"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill={isSaved ? 'var(--secondary)' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill={isSaved ? 'var(--secondary)' : 'none'}
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
           </svg>
         </button>
@@ -146,32 +184,57 @@ export function PostDetailCard({
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  postCard: {
-    padding: '2.25rem',
+  card: {
+    padding: '2rem 2.25rem',
     borderRadius: 'var(--radius-xl)',
     display: 'flex',
     flexDirection: 'column',
     gap: '1.25rem',
+    boxShadow: 'var(--shadow-lg)',
   },
-  postHeader: {
+  header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
   },
   authorRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.85rem',
   },
-  authorAvatarLetter: {
-    fontSize: '1rem',
+  authorLetter: {
+    fontSize: '0.92rem',
     fontWeight: 800,
     color: 'var(--heading-color)',
+  },
+  authorMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.15rem',
+  },
+  authorNameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
   },
   authorName: {
     fontWeight: 800,
     fontSize: '1rem',
     color: 'var(--heading-color)',
+  },
+  verifiedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '15px',
+    height: '15px',
+    borderRadius: '50%',
+    backgroundColor: '#0095F6',
+    color: '#ffffff',
+    fontSize: '0.62rem',
+    fontWeight: 800,
+    lineHeight: 1,
   },
   postDate: {
     fontSize: '0.78rem',
@@ -181,8 +244,8 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--btn-secondary-bg)',
     border: '1px solid var(--border)',
     color: 'var(--fg-muted)',
-    width: '40px',
-    height: '40px',
+    width: '38px',
+    height: '38px',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -191,26 +254,40 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'var(--transition)',
   },
   postTitle: {
-    fontSize: '2.2rem',
-    fontWeight: 900,
+    fontSize: '1.85rem',
+    fontWeight: 800,
     color: 'var(--heading-color)',
-    lineHeight: '1.25',
-    letterSpacing: '-0.025em',
+    lineHeight: '1.3',
+    letterSpacing: '-0.02em',
+    marginTop: '0.15rem',
   },
-  divider: {
-    height: '1px',
-    background: 'var(--border)',
+  coverWrapper: {
+    width: '100%',
+    maxHeight: '620px',
+    borderRadius: 'var(--radius-lg)',
+    overflow: 'hidden',
+    backgroundColor: 'var(--bg-input)',
+    border: '1px solid var(--border)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverImg: {
+    width: '100%',
+    maxHeight: '620px',
+    objectFit: 'contain',
+    display: 'block',
+    borderRadius: 'var(--radius-lg)',
   },
   postContent: {
-    fontSize: '1.05rem',
-    lineHeight: '1.75',
+    fontSize: '1.02rem',
+    lineHeight: '1.7',
     color: 'var(--fg-main)',
   },
   tagList: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '0.5rem',
-    marginTop: '0.5rem',
   },
   tagBadge: {
     fontSize: '0.82rem',
@@ -222,8 +299,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--tag-color)',
   },
   actionBar: {
-    marginTop: '1rem',
-    paddingTop: '1.25rem',
+    marginTop: '0.5rem',
+    paddingTop: '1rem',
     borderTop: '1px solid var(--border)',
     display: 'flex',
     alignItems: 'center',
@@ -233,7 +310,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    padding: '0.4rem',
+    padding: '0.35rem',
     borderRadius: 'var(--radius-full)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -241,7 +318,7 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'var(--transition)',
   },
   likesCount: {
-    fontSize: '0.92rem',
+    fontSize: '0.9rem',
     color: 'var(--fg-muted)',
   },
 };

@@ -1,5 +1,12 @@
 import { apiFetch } from '@/lib/api';
-import { Post, PostDetailResponseData, CreatePostRequest, ApiResponse } from '@/types';
+import {
+  Post,
+  PostDetailResponseData,
+  CreatePostRequest,
+  PostLikeCountData,
+  PostCommentCountData,
+  ApiResponse,
+} from '@/types';
 
 export const postService = {
   async getAllPosts(pageIndex: number = 1, pageSize: number = 10): Promise<ApiResponse<Post[]>> {
@@ -15,5 +22,21 @@ export const postService = {
       method: 'POST',
       body: data,
     });
+  },
+
+  /**
+   * Fetches real-time like count for a specific post.
+   * Endpoint: GET /posts/like-count/:postId
+   */
+  async getLikeCount(postId: string | number): Promise<ApiResponse<PostLikeCountData>> {
+    return await apiFetch<PostLikeCountData>(`/posts/like-count/${postId}`);
+  },
+
+  /**
+   * Fetches real-time comment count for a specific post.
+   * Endpoint: GET /posts/comment-count/:postId
+   */
+  async getCommentCount(postId: string | number): Promise<ApiResponse<PostCommentCountData>> {
+    return await apiFetch<PostCommentCountData>(`/posts/comment-count/${postId}`);
   },
 };

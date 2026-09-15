@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useAuth } from '@/context';
+import { uploadService } from '@/services';
 
 interface FeedSidebarProps {
   userStoriesCount: number;
@@ -11,6 +12,7 @@ interface FeedSidebarProps {
   activeTag: string;
   onSelectTag: (tag: string) => void;
   onOpenCreateModal: () => void;
+  onOpenEditProfile?: () => void;
 }
 
 export function FeedSidebar({
@@ -21,29 +23,58 @@ export function FeedSidebar({
   activeTag,
   onSelectTag,
   onOpenCreateModal,
+  onOpenEditProfile,
 }: FeedSidebarProps) {
   const { user } = useAuth();
   const username = user?.username || 'Creator';
+  const bio = user?.bio || 'Creator & Storyteller on SimpleBlog';
+  const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
+  const bannerSrc = user?.banner_url ? uploadService.getImageUrl(user.banner_url) : null;
+
+  // Real stats from backend (or fallback to calculated)
+  const storiesCount = user?.stats?.stories_count !== undefined ? user.stats.stories_count : userStoriesCount;
+  const likesCount = user?.stats?.likes_count !== undefined ? user.stats.likes_count : likedStoriesCount;
 
   return (
     <aside style={styles.sidebarColumn}>
       {/* User Profile Card */}
       <div style={styles.profileCard} className="glass">
-        <div style={styles.profileHeaderBg}></div>
+        <div
+          style={{
+            ...styles.profileHeaderBg,
+            backgroundImage: bannerSrc ? `url(${bannerSrc})` : 'var(--ig-gradient)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        ></div>
         <div style={styles.profileContent}>
-          <div className="story-avatar-wrap" style={{ width: '64px', height: '64px', marginTop: '-32px' }}>
+          <div
+            className="story-avatar-wrap"
+            style={{ width: '68px', height: '68px', marginTop: '-34px', cursor: onOpenEditProfile ? 'pointer' : 'default' }}
+            onClick={onOpenEditProfile}
+            title={onOpenEditProfile ? 'Change Profile Picture' : undefined}
+          >
             <div className="story-avatar-inner">
-              <span style={styles.profileAvatarLetter}>
-                {username.substring(0, 2).toUpperCase()}
-              </span>
+              {avatarSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarSrc}
+                  alt={username}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <span style={styles.profileAvatarLetter}>
+                  {username.substring(0, 2).toUpperCase()}
+                </span>
+              )}
             </div>
           </div>
           <h4 style={styles.profileName}>@{username}</h4>
-          <p style={styles.profileBio}>Creator & Storyteller on SimpleBlog</p>
-          
+          <p style={styles.profileBio}>{bio}</p>
+
           <div style={styles.profileStats}>
             <div style={styles.statItem}>
-              <strong style={styles.statNumber}>{userStoriesCount}</strong>
+              <strong style={styles.statNumber}>{storiesCount}</strong>
               <span style={styles.statLabel}>Stories</span>
             </div>
             <div style={styles.statDivider}></div>
@@ -53,18 +84,30 @@ export function FeedSidebar({
             </div>
             <div style={styles.statDivider}></div>
             <div style={styles.statItem}>
-              <strong style={styles.statNumber}>{likedStoriesCount}</strong>
+              <strong style={styles.statNumber}>{likesCount}</strong>
               <span style={styles.statLabel}>Likes</span>
             </div>
           </div>
 
-          <button
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '1rem', fontSize: '0.85rem' }}
-            onClick={onOpenCreateModal}
-          >
-            + Write New Story
-          </button>
+          <div style={styles.profileButtonGroup}>
+            <button
+              className="btn btn-primary"
+              style={styles.actionBtn}
+              onClick={onOpenCreateModal}
+            >
+              + Write Story
+            </button>
+            {onOpenEditProfile && (
+              <button
+                className="btn btn-secondary"
+                style={styles.actionBtn}
+                onClick={onOpenEditProfile}
+                title="Edit Bio & Photo"
+              >
+                Edit Profile
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -135,9 +178,9 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
   },
   profileHeaderBg: {
-    height: '65px',
+    height: '75px',
     background: 'var(--ig-gradient)',
-    opacity: 0.85,
+    opacity: 0.9,
   },
   profileContent: {
     padding: '0 1.5rem 1.5rem 1.5rem',
@@ -160,7 +203,9 @@ const styles: Record<string, React.CSSProperties> = {
   profileBio: {
     fontSize: '0.82rem',
     color: 'var(--fg-subtle)',
-    marginTop: '0.2rem',
+    marginTop: '0.25rem',
+    lineHeight: 1.4,
+    maxWidth: '90%',
   },
   profileStats: {
     display: 'flex',
@@ -193,6 +238,17 @@ const styles: Record<string, React.CSSProperties> = {
     height: '24px',
     backgroundColor: 'var(--border)',
   },
+  profileButtonGroup: {
+    display: 'flex',
+    gap: '0.65rem',
+    width: '100%',
+    marginTop: '1.25rem',
+  },
+  actionBtn: {
+    flex: 1,
+    padding: '0.65rem 0.5rem',
+    fontSize: '0.82rem',
+  },
   trendingCard: {
     borderRadius: 'var(--radius-lg)',
     padding: '1.35rem',
@@ -213,8 +269,8 @@ const styles: Record<string, React.CSSProperties> = {
   trendingTagItem: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.35rem',
-    padding: '0.4rem 0.8rem',
+    gap: '0.4rem',
+    padding: '0.45rem 0.85rem',
     borderRadius: 'var(--radius-full)',
     border: '1px solid var(--border)',
     fontSize: '0.82rem',
@@ -223,26 +279,26 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'var(--transition)',
   },
   trendDot: {
-    color: 'var(--ig-primary)',
+    fontSize: '0.65rem',
+    opacity: 0.5,
   },
   tipsCard: {
     borderRadius: 'var(--radius-lg)',
     padding: '1.35rem',
   },
   tipsList: {
-    paddingLeft: '1.15rem',
+    paddingLeft: '1.25rem',
+    fontSize: '0.82rem',
+    color: 'var(--fg-muted)',
+    lineHeight: '1.6',
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
-    fontSize: '0.84rem',
-    color: 'var(--fg-muted)',
-    lineHeight: '1.45',
   },
   sidebarFooter: {
-    fontSize: '0.78rem',
-    color: 'var(--fg-subtle)',
     textAlign: 'center',
-    lineHeight: '1.4',
-    padding: '0.5rem 0',
+    fontSize: '0.75rem',
+    color: 'var(--fg-subtle)',
+    padding: '0.5rem 1rem',
   },
 };
