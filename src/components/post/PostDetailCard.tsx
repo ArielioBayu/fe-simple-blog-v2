@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { PostDetail } from '@/types';
+import { uploadService } from '@/services';
 
 interface PostDetailCardProps {
   post: PostDetail;
@@ -40,9 +41,11 @@ export function PostDetailCard({
     }
   };
 
-  // Extract embedded image markdown if present
+  // Extract image path from field or fallback to embedded markdown
+  const imagePath = post.file_path || post.filepath;
+  const directImageUrl = imagePath ? uploadService.getImageUrl(imagePath) : null;
   const imageMatch = post.post_content.match(/!\[.*?\]\((.*?)\)/);
-  const imageUrl = imageMatch ? imageMatch[1] : null;
+  const imageUrl = directImageUrl || (imageMatch ? imageMatch[1] : null);
   const rawText = imageMatch ? post.post_content.replace(imageMatch[0], '').trim() : post.post_content;
 
   // Filter valid non-empty hashtags
@@ -65,7 +68,11 @@ export function PostDetailCard({
           <div style={styles.authorMeta}>
             <div style={styles.authorNameRow}>
               <span style={styles.authorName}>@{post.username}</span>
-              <span style={styles.verifiedBadge}>✓</span>
+              <span style={styles.verifiedBadge} title="Verified Creator" aria-label="Verified Creator">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#0095F6">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+              </span>
             </div>
             <span style={styles.postDate}>{formatDate(post.created_at)}</span>
           </div>
@@ -244,8 +251,10 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--btn-secondary-bg)',
     border: '1px solid var(--border)',
     color: 'var(--fg-muted)',
-    width: '38px',
-    height: '38px',
+    width: '44px',
+    height: '44px',
+    minWidth: '44px',
+    minHeight: '44px',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -310,7 +319,9 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    padding: '0.35rem',
+    padding: '0.45rem',
+    minWidth: '44px',
+    minHeight: '44px',
     borderRadius: 'var(--radius-full)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -322,3 +333,4 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--fg-muted)',
   },
 };
+

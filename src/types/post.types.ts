@@ -1,4 +1,4 @@
-import { Comment } from './comment.types';
+﻿import { Comment } from './comment.types';
 
 export interface Post {
   id: number;
@@ -8,7 +8,12 @@ export interface Post {
   post_content: string;
   post_hashtags: string[];
   is_liked: boolean;
+  file_path?: string;
+  filepath?: string;
+  file_type?: string;
+  file_size?: number;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface PostDetail {
@@ -19,7 +24,12 @@ export interface PostDetail {
   post_content: string;
   post_hashtags: string[];
   is_liked: boolean;
+  file_path?: string;
+  filepath?: string;
+  file_type?: string;
+  file_size?: number;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface PostDetailResponseData {
@@ -42,6 +52,9 @@ export interface CreatePostRequest {
   post_title: string;
   post_content: string;
   post_hashtags: string[];
+  file_path?: string;
+  filepath?: string;
+  upload_id?: number;
 }
 
 export interface ActivityRequest {

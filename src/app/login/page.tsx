@@ -5,20 +5,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth, useTheme } from '@/context';
 
-// 3 Dynamic Showcase Images provided in docs folder
+// 3 Dynamic Transparent Story Showcase Graphics
 const DYNAMIC_HERO_IMAGES = [
   {
-    src: '/images/login-1.jpg',
+    src: '/images/login-1.png',
     id: 1,
     title: 'Momen Tim & Kreator',
   },
   {
-    src: '/images/login-2.jpg',
+    src: '/images/login-2.png',
     id: 2,
     title: 'Kisah Sahabat & Pekerja',
   },
   {
-    src: '/images/login-3.jpg',
+    src: '/images/login-3.png',
     id: 3,
     title: 'Petualangan & Inspirasi',
   },
@@ -33,13 +33,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [googleNotice, setGoogleNotice] = useState(false);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
 
-  // Dynamic image index: changes on refresh
+  // Dynamic image index: randomizes on refresh
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    // Pick a random image on every page mount / refresh
     const randomIndex = Math.floor(Math.random() * DYNAMIC_HERO_IMAGES.length);
     queueMicrotask(() => {
       setCurrentImageIndex(randomIndex);
@@ -47,6 +46,10 @@ export default function LoginPage() {
   }, []);
 
   const activeImage = DYNAMIC_HERO_IMAGES[currentImageIndex];
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % DYNAMIC_HERO_IMAGES.length);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,9 +66,17 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    setGoogleNotice(true);
+    setInfoNotice('Fitur Login Google OAuth segera hadir. Silakan masuk menggunakan email atau nama pengguna Anda.');
     setTimeout(() => {
-      setGoogleNotice(false);
+      setInfoNotice(null);
+    }, 4500);
+  };
+
+  const handleForgotPassword = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setInfoNotice('Fitur reset kata sandi mandiri segera hadir. Silakan hubungi administrator atau buat akun baru.');
+    setTimeout(() => {
+      setInfoNotice(null);
     }, 4500);
   };
 
@@ -74,127 +85,161 @@ export default function LoginPage() {
   return (
     <div style={{
       ...styles.pageWrapper,
-      backgroundColor: isDark ? '#000000' : '#FAFAFA',
+      background: isDark
+        ? '#000000'
+        : 'radial-gradient(ellipse 85% 60% at 8% 12%, rgba(236, 72, 153, 0.14) 0%, transparent 55%), radial-gradient(ellipse 70% 55% at 92% 18%, rgba(99, 102, 241, 0.12) 0%, transparent 50%), radial-gradient(ellipse 80% 65% at 50% 95%, rgba(255, 90, 54, 0.10) 0%, transparent 58%), radial-gradient(ellipse 60% 50% at 85% 85%, rgba(14, 165, 233, 0.10) 0%, transparent 52%), linear-gradient(150deg, #FFFFFF 0%, #FFF9F7 28%, #FAF8FF 65%, #F0F7FF 100%)',
       color: isDark ? '#F5F5F5' : '#111827',
     }}>
-      {/* Toast Notification for Google OAuth */}
-      {googleNotice && (
-        <div style={styles.toast}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-          <span>Fitur <strong>Login dengan Google (OAuth 2.0)</strong> sedang disiapkan di backend. Silakan gunakan email & password Anda.</span>
+      {/* Subtle Ambient Decorative Glow Orbs (Light Mode Only) */}
+      {!isDark && (
+        <div style={styles.ambientGlowContainer} aria-hidden="true">
+          <div style={styles.glowBlobTopLeft} />
+          <div style={styles.glowBlobBottomLeft} />
+          <div style={styles.glowBlobRight} />
         </div>
       )}
 
-      {/* Top Header Theme Toggle Button */}
-      <header style={styles.topHeader}>
-        <button
-          onClick={toggleTheme}
-          style={{
-            ...styles.themeToggleBtn,
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)',
-            color: isDark ? '#FFFFFF' : '#1F2937',
-          }}
-          title={isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
-          aria-label="Toggle Theme"
-        >
-          {isDark ? (
-            <>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
-              <span style={styles.themeToggleText}>Mode Terang</span>
-            </>
-          ) : (
-            <>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-              </svg>
-              <span style={styles.themeToggleText}>Mode Gelap</span>
-            </>
-          )}
-        </button>
-      </header>
 
-      {/* Main Split Layout: Left Showcase & Right Login Box */}
-      <main style={styles.mainContainer}>
-        {/* LEFT COLUMN: Instagram-Style Headline & Dynamic 3D Story Image Showcase */}
-        <section style={styles.leftColumn}>
-          {/* Logo & Headline */}
-          <div style={styles.headlineContainer}>
-            <div style={styles.logoRow}>
-              <div style={styles.instagramGlyph}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                </svg>
-              </div>
-              <span style={styles.logoTitle}>SimpleBlog</span>
+      {/* Unified Centered Stage: Locks Logo, Mode Switch, Hero, Divider, and Form together */}
+      <div className="login-stage-container" style={{ position: 'relative', zIndex: 1 }}>
+        {/* Top Header Bar: Logo aligned to left of container, Theme toggle aligned to right */}
+        <header className="login-top-header">
+          <div style={styles.brandLogoGroup}>
+            <div style={styles.customLogoBadge}>
+              {/* Creative Modern SimpleBlog Emblem: Glowing Story Prism & Feather Nib */}
+              <svg width="34" height="34" viewBox="0 0 36 36" fill="none">
+                <defs>
+                  <linearGradient id="sbBrandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#6366F1" />
+                    <stop offset="45%" stopColor="#EC4899" />
+                    <stop offset="100%" stopColor="#FF5A36" />
+                  </linearGradient>
+                  <linearGradient id="sbSparkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FFD200" />
+                    <stop offset="100%" stopColor="#F7971E" />
+                  </linearGradient>
+                </defs>
+                {/* Ambient Background Squircle */}
+                <rect x="2" y="2" width="32" height="32" rx="11" fill="url(#sbBrandGradient)" />
+                {/* Story Feather / Stylized Dynamic Quill Path */}
+                <path
+                  d="M24 10.5C22.2 8.7 19.5 9 17.5 11L10.5 18C9.5 19 9 20.5 9 22L8 28L14 27C15.5 27 17 26.5 18 25.5L25 18.5C27 16.5 27.3 13.8 25.5 12L24 10.5Z"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="rgba(255, 255, 255, 0.12)"
+                />
+                <path
+                  d="M14 22L19 17"
+                  stroke="#FFFFFF"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                {/* Inspiration Spark Star */}
+                <circle cx="26.5" cy="9.5" r="2.2" fill="url(#sbSparkGrad)" />
+              </svg>
             </div>
-
-            <h1 style={{
-              ...styles.headlineText,
-              color: isDark ? '#FFFFFF' : '#0F172A',
-            }}>
-              Lihat momen sehari-hari dari{' '}
-              <span style={styles.gradientHighlight}>teman dekat</span> Anda.
-            </h1>
+            <span style={styles.brandNameText}>
+              Simple<span style={styles.brandGradientWord}>Blog</span>
+            </span>
           </div>
 
-          {/* Dynamic 3D Showcase Graphic */}
-          <div style={styles.showcaseGraphicWrapper}>
-            <div style={styles.showcaseImageContainer} className="animate-scale-up">
+          {/* Theme Switcher Button */}
+          <button
+            id="theme-toggle-btn"
+            onClick={toggleTheme}
+            style={{
+              ...styles.themeToggleBtn,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)',
+              color: isDark ? '#FFFFFF' : '#1F2937',
+            }}
+            title={isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
+            aria-label="Toggle Theme"
+          >
+            {isDark ? (
+              <>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <span style={styles.themeToggleText}>Mode Terang</span>
+              </>
+            ) : (
+              <>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <span style={styles.themeToggleText}>Mode Gelap</span>
+              </>
+            )}
+          </button>
+        </header>
+
+        {/* Main Full-Width Split Layout: Left Hero & Right Form */}
+        <main className="login-split-main">
+          {/* LEFT COLUMN: Fills the left screen with Headline & Large 3D Floating Mockup */}
+          <section className="login-hero-left">
+            {/* Big Bold Headline */}
+            <div style={styles.headlineWrapper}>
+              <h1 style={{
+                ...styles.heroHeadline,
+                color: isDark ? '#FFFFFF' : '#0F172A',
+              }}>
+                Lihat momen sehari-hari dari<br />
+                <span style={styles.vibrantGradientText}>teman dekat</span> Anda.
+              </h1>
+            </div>
+
+            {/* Large Floating 3D Graphic */}
+            <div
+              style={styles.heroGraphicWrapper}
+              onClick={handleNextImage}
+              title="Klik untuk beralih gambar momen berikutnya"
+            >
               <Image
                 key={activeImage.src}
                 src={activeImage.src}
-                alt="Story highlight preview"
-                width={420}
-                height={520}
+                alt="Momen sehari-hari teman dekat"
+                width={540}
+                height={600}
                 priority
-                style={styles.showcaseImage}
+                unoptimized
+                style={{
+                  ...styles.floatingHeroImage,
+                  filter: isDark
+                    ? 'drop-shadow(0 25px 50px rgba(0,0,0,0.85))'
+                    : 'drop-shadow(0 20px 40px rgba(0,0,0,0.14))',
+                }}
               />
             </div>
+          </section>
 
-            {/* Subtle Carousel Dots to cycle images dynamically */}
-            <div style={styles.dotsRow}>
-              {DYNAMIC_HERO_IMAGES.map((img, idx) => (
-                <button
-                  key={img.id}
-                  onClick={() => setCurrentImageIndex(idx)}
-                  style={{
-                    ...styles.dotBtn,
-                    backgroundColor: idx === currentImageIndex ? '#0095F6' : (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)'),
-                    width: idx === currentImageIndex ? '20px' : '7px',
-                  }}
-                  title={`Tampilkan gambar ${idx + 1}`}
-                  aria-label={`Showcase image ${idx + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* RIGHT COLUMN: Instagram-Style Login Form */}
-        <section style={styles.rightColumn}>
-          <div style={{
-            ...styles.loginBox,
-            backgroundColor: isDark ? '#121212' : '#FFFFFF',
-            borderColor: isDark ? '#262626' : '#DBDBDB',
-            boxShadow: isDark ? '0 12px 36px rgba(0, 0, 0, 0.5)' : '0 8px 24px rgba(0, 0, 0, 0.05)',
-          }}>
+          {/* RIGHT COLUMN: Vertically centered login panel with crisp dividing line */}
+          <section
+            className="login-form-right"
+            style={{
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(226, 232, 240, 0.85)',
+            }}
+          >
+            <div style={{
+              ...styles.loginBox,
+              backgroundColor: isDark ? '#121212' : 'rgba(255, 255, 255, 0.88)',
+              backdropFilter: isDark ? 'none' : 'blur(20px)',
+              WebkitBackdropFilter: isDark ? 'none' : 'blur(20px)',
+              borderColor: isDark ? '#262626' : 'rgba(255, 255, 255, 0.95)',
+              boxShadow: isDark
+                ? '0 16px 40px rgba(0, 0, 0, 0.55)'
+                : '0 24px 48px -12px rgba(99, 102, 241, 0.09), 0 8px 24px -4px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(226, 232, 240, 0.85)',
+            }}>
             <h2 style={{
               ...styles.formHeading,
               color: isDark ? '#F5F5F5' : '#111827',
@@ -210,6 +255,17 @@ export default function LoginPage() {
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
                 <span>{error}</span>
+              </div>
+            )}
+
+            {infoNotice && (
+              <div style={styles.infoMessage} role="status">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>{infoNotice}</span>
               </div>
             )}
 
@@ -285,7 +341,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Forgot Password */}
+            {/* Forgot Password Link */}
             <div style={styles.forgotPasswordContainer}>
               <Link
                 href="/login"
@@ -293,10 +349,7 @@ export default function LoginPage() {
                   ...styles.forgotPasswordText,
                   color: isDark ? '#A8A8A8' : '#6B7280',
                 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('Silakan hubungi administrator atau lakukan registrasi akun baru.');
-                }}
+                onClick={handleForgotPassword}
               >
                 Lupa kata sandi?
               </Link>
@@ -309,7 +362,7 @@ export default function LoginPage() {
               <div style={{ ...styles.dividerBar, backgroundColor: isDark ? '#262626' : '#DBDBDB' }}></div>
             </div>
 
-            {/* Login with Google Button (Replaces Facebook as requested) */}
+            {/* Login with Google Button */}
             <button
               type="button"
               onClick={handleGoogleLogin}
@@ -356,30 +409,35 @@ export default function LoginPage() {
           </div>
         </section>
       </main>
-
-      {/* FOOTER: Instagram Style Navigation Links */}
-      <footer style={{
-        ...styles.footerContainer,
-        borderColor: isDark ? '#262626' : '#E5E7EB',
-      }}>
-        <div style={styles.footerLinksGrid}>
-          <a href="#" style={styles.footerLinkItem}>Tentang</a>
-          <a href="#" style={styles.footerLinkItem}>Blog</a>
-          <a href="#" style={styles.footerLinkItem}>Pekerjaan</a>
-          <a href="#" style={styles.footerLinkItem}>Bantuan</a>
-          <a href="#" style={styles.footerLinkItem}>API</a>
-          <a href="#" style={styles.footerLinkItem}>Privasi</a>
-          <a href="#" style={styles.footerLinkItem}>Ketentuan</a>
-          <a href="#" style={styles.footerLinkItem}>Lokasi</a>
-          <a href="#" style={styles.footerLinkItem}>Populer</a>
-        </div>
-
-        <div style={styles.footerBottomRow}>
-          <span style={styles.languageDropdown}>Bahasa Indonesia ▾</span>
-          <span style={styles.copyrightLabel}>© 2026 SimpleBlog from Bayu Aji</span>
-        </div>
-      </footer>
     </div>
+
+    {/* FOOTER: Global Navigation Links (Preserving User's Selected Items) */}
+    <footer style={{
+      ...styles.footerContainer,
+      position: 'relative',
+      zIndex: 1,
+      borderColor: isDark ? '#262626' : 'rgba(226, 232, 240, 0.8)',
+      backgroundColor: isDark ? 'transparent' : 'rgba(255, 255, 255, 0.45)',
+      backdropFilter: isDark ? 'none' : 'blur(10px)',
+    }}>
+      <div style={styles.footerLinksGrid}>
+        <a href="#" style={styles.footerLinkItem}>Tentang</a>
+        <a href="#" style={styles.footerLinkItem}>Blog</a>
+        <a href="#" style={styles.footerLinkItem}>Pekerjaan</a>
+        <a href="#" style={styles.footerLinkItem}>Bantuan</a>
+        <a href="#" style={styles.footerLinkItem}>API</a>
+        <a href="#" style={styles.footerLinkItem}>Privasi</a>
+        <a href="#" style={styles.footerLinkItem}>Ketentuan</a>
+        <a href="#" style={styles.footerLinkItem}>Lokasi</a>
+        <a href="#" style={styles.footerLinkItem}>Populer</a>
+      </div>
+
+      <div style={styles.footerBottomRow}>
+        <span style={styles.languageDropdown}>Bahasa Indonesia ▾</span>
+        <span style={styles.copyrightLabel}>© 2026 SimpleBlog from Bayu Aji</span>
+      </div>
+    </footer>
+  </div>
   );
 }
 
@@ -392,7 +450,48 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'background-color 0.25s ease, color 0.25s ease',
     position: 'relative',
     overflowX: 'hidden',
+    justifyContent: 'space-between',
   },
+
+  /* Ambient Lighting Blobs (Light Mode) */
+  ambientGlowContainer: {
+    position: 'absolute',
+    inset: 0,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    zIndex: 0,
+  },
+  glowBlobTopLeft: {
+    position: 'absolute',
+    top: '-6%',
+    left: '-6%',
+    width: '540px',
+    height: '540px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(236, 72, 153, 0.20) 0%, rgba(255, 90, 54, 0.10) 45%, transparent 70%)',
+    filter: 'blur(75px)',
+  },
+  glowBlobBottomLeft: {
+    position: 'absolute',
+    bottom: '-6%',
+    left: '16%',
+    width: '480px',
+    height: '480px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(251, 146, 60, 0.16) 0%, rgba(244, 114, 182, 0.08) 50%, transparent 70%)',
+    filter: 'blur(80px)',
+  },
+  glowBlobRight: {
+    position: 'absolute',
+    top: '8%',
+    right: '-6%',
+    width: '520px',
+    height: '520px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.14) 0%, rgba(14, 165, 233, 0.10) 50%, transparent 70%)',
+    filter: 'blur(80px)',
+  },
+
   toast: {
     position: 'fixed',
     top: '1.25rem',
@@ -411,17 +510,40 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255, 255, 255, 0.18)',
     maxWidth: '92vw',
   },
-  topHeader: {
-    position: 'absolute',
-    top: '1.25rem',
-    right: '1.5rem',
-    zIndex: 40,
+
+  /* Brand Logo & Identity (Aligned within stage container) */
+  brandLogoGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
   },
+  customLogoBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    filter: 'drop-shadow(0 6px 16px rgba(236, 72, 153, 0.35))',
+    cursor: 'pointer',
+  },
+  brandNameText: {
+    fontSize: '1.5rem',
+    fontWeight: 800,
+    fontFamily: '"Outfit", sans-serif',
+    letterSpacing: '-0.03em',
+    userSelect: 'none',
+  },
+  brandGradientWord: {
+    background: 'linear-gradient(135deg, #EC4899 0%, #FF5A36 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    display: 'inline',
+  },
+
+  /* Theme Switcher Button */
   themeToggleBtn: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '0.45rem 0.95rem',
+    padding: '0.5rem 1.05rem',
     borderRadius: '9999px',
     borderWidth: '1px',
     borderStyle: 'solid',
@@ -433,116 +555,47 @@ const styles: Record<string, React.CSSProperties> = {
   themeToggleText: {
     letterSpacing: '-0.01em',
   },
-  mainContainer: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '4.5rem',
-    padding: '4rem 2rem 2rem',
-    maxWidth: '1150px',
-    margin: '0 auto',
-    width: '100%',
-    boxSizing: 'border-box',
-    flexWrap: 'wrap',
-  },
 
-  /* Left Showcase Styles */
-  leftColumn: {
-    flex: '1 1 500px',
-    maxWidth: '560px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    boxSizing: 'border-box',
-  },
-  headlineContainer: {
+  /* Left Hero Content Elements */
+  headlineWrapper: {
     textAlign: 'center',
-    marginBottom: '2rem',
+    marginBottom: '1.25rem',
+    width: '100%',
+    maxWidth: '540px',
   },
-  logoRow: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '1rem',
-  },
-  instagramGlyph: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '13px',
-    background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 8px 18px rgba(225, 48, 108, 0.35)',
-  },
-  logoTitle: {
-    fontSize: '1.75rem',
+  heroHeadline: {
+    fontSize: 'clamp(1.85rem, 2.6vw, 2.5rem)',
     fontWeight: 800,
+    lineHeight: 1.18,
     letterSpacing: '-0.03em',
+    margin: 0,
   },
-  headlineText: {
-    fontSize: '2.5rem',
-    fontWeight: 800,
-    lineHeight: 1.2,
-    letterSpacing: '-0.035em',
-    maxWidth: '460px',
-    margin: '0 auto',
-  },
-  gradientHighlight: {
+  vibrantGradientText: {
     background: 'linear-gradient(90deg, #FD1D1D 0%, #E1306C 60%, #833AB4 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     display: 'inline',
   },
-  showcaseGraphicWrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    position: 'relative',
-    width: '100%',
-  },
-  showcaseImageContainer: {
-    position: 'relative',
-    width: '100%',
-    maxWidth: '380px',
+  heroGraphicWrapper: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '24px',
-    overflow: 'hidden',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.45)',
-    transition: 'transform 0.3s ease',
+    width: '100%',
+    maxWidth: '460px',
+    cursor: 'pointer',
+    transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
   },
-  showcaseImage: {
+  floatingHeroImage: {
     width: '100%',
     height: 'auto',
-    maxHeight: '475px',
-    objectFit: 'cover',
-    borderRadius: '24px',
+    maxWidth: '440px',
+    maxHeight: '430px',
+    objectFit: 'contain',
     display: 'block',
-  },
-  dotsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginTop: '1.25rem',
-  },
-  dotBtn: {
-    height: '7px',
-    borderRadius: '9999px',
-    border: 'none',
-    cursor: 'pointer',
-    padding: 0,
-    transition: 'all 0.25s ease',
+    userSelect: 'none',
   },
 
-  /* Right Login Form Styles */
-  rightColumn: {
-    flex: '1 1 360px',
-    maxWidth: '400px',
-    width: '100%',
-  },
+  /* Right Form Box */
   loginBox: {
     borderRadius: '16px',
     padding: '2.5rem 2.25rem 2rem',
@@ -551,9 +604,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     boxSizing: 'border-box',
+    width: '100%',
+    maxWidth: '380px',
   },
   formHeading: {
-    fontSize: '1.15rem',
+    fontSize: '1.2rem',
     fontWeight: 700,
     textAlign: 'center',
     marginBottom: '1.75rem',
@@ -571,10 +626,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.82rem',
     marginBottom: '1.25rem',
   },
+  infoMessage: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '0.75rem 1rem',
+    backgroundColor: 'rgba(0, 149, 246, 0.12)',
+    border: '1px solid rgba(0, 149, 246, 0.3)',
+    borderRadius: '8px',
+    color: 'var(--social-blue, #0095F6)',
+    fontSize: '0.82rem',
+    marginBottom: '1.25rem',
+    lineHeight: 1.45,
+  },
   formElement: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.65rem',
+    gap: '0.7rem',
   },
   inputGroup: {
     position: 'relative',
@@ -611,14 +679,15 @@ const styles: Record<string, React.CSSProperties> = {
   loginSubmitBtn: {
     marginTop: '0.5rem',
     width: '100%',
-    padding: '0.75rem',
+    padding: '0.78rem',
     borderRadius: '9999px',
     backgroundColor: '#0095F6',
     color: '#FFFFFF',
     border: 'none',
-    fontSize: '0.9rem',
+    fontSize: '0.92rem',
     fontWeight: 700,
     transition: 'background-color 0.2s ease, opacity 0.2s ease',
+    boxShadow: '0 4px 14px rgba(0, 149, 246, 0.3)',
   },
   btnLoadingRow: {
     display: 'flex',

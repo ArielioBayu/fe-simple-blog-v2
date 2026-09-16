@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Post } from '@/types';
-import { postService } from '@/services';
+import { postService, uploadService } from '@/services';
 
 interface PostCardProps {
   post: Post;
@@ -81,8 +81,10 @@ export function PostCard({
     }
   };
 
+  const imagePath = post.file_path || post.filepath;
+  const directImageUrl = imagePath ? uploadService.getImageUrl(imagePath) : null;
   const imageMatch = post.post_content.match(/!\[.*?\]\((.*?)\)/);
-  const imageUrl = imageMatch ? imageMatch[1] : null;
+  const imageUrl = directImageUrl || (imageMatch ? imageMatch[1] : null);
   const rawText = imageMatch ? post.post_content.replace(imageMatch[0], '').trim() : post.post_content;
   const postSnippet = rawText.length > 250 ? `${rawText.substring(0, 250)}...` : rawText;
 
@@ -106,7 +108,11 @@ export function PostCard({
           <div style={styles.authorMeta}>
             <div style={styles.authorNameRow}>
               <span style={styles.authorName}>@{post.username}</span>
-              <span style={styles.verifiedBadge}>✓</span>
+              <span style={styles.verifiedBadge} title="Verified Creator" aria-label="Verified Creator">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#0095F6">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+              </span>
             </div>
             <span style={styles.postDate}>{formatDate(post.created_at)}</span>
           </div>
@@ -179,6 +185,7 @@ export function PostCard({
             }}
             className={isHeartAnimating ? 'animate-heart-pop' : ''}
             title={post.is_liked ? 'Unlike' : 'Like'}
+            aria-label={post.is_liked ? 'Unlike cerita ini' : 'Sukai cerita ini'}
           >
             <svg
               width="23"
@@ -204,7 +211,8 @@ export function PostCard({
           <Link
             href={`/posts/${post.id}`}
             style={styles.actionIconBtn}
-            title="Comment on post"
+            title="Lihat komentar"
+            aria-label={`Buka komentar untuk postingan ${post.post_title}`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
@@ -218,7 +226,8 @@ export function PostCard({
           <button
             onClick={() => onShare(post.id, post.post_title)}
             style={styles.actionIconBtn}
-            title="Share"
+            title="Bagikan cerita"
+            aria-label="Bagikan tautan cerita ini"
           >
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -234,7 +243,8 @@ export function PostCard({
             ...styles.actionIconBtn,
             color: isSaved ? 'var(--secondary)' : 'var(--fg-muted)',
           }}
-          title={isSaved ? 'Remove Bookmark' : 'Bookmark'}
+          title={isSaved ? 'Hapus Simpanan' : 'Simpan Cerita'}
+          aria-label={isSaved ? 'Hapus cerita dari tersimpan' : 'Simpan cerita ini'}
         >
           <svg
             width="22"
@@ -338,6 +348,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--fg-muted)',
     cursor: 'pointer',
     padding: '0.4rem',
+    minWidth: '44px',
+    minHeight: '44px',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -411,7 +423,9 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     color: 'var(--fg-muted)',
     cursor: 'pointer',
-    padding: '0.35rem 0.6rem',
+    padding: '0.45rem 0.65rem',
+    minWidth: '44px',
+    minHeight: '44px',
     borderRadius: 'var(--radius-full)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -447,3 +461,4 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'var(--transition)',
   },
 };
+

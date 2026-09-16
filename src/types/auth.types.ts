@@ -33,6 +33,8 @@ export interface UserProfile {
   stats?: UserStats;
 }
 
+export type User = UserProfile;
+
 export interface UpdateProfileRequest {
   username?: string;
   bio?: string;

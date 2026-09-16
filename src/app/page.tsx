@@ -4,7 +4,18 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
 import { postService, activityService } from '@/services';
-import { Navbar, Toast, StoryBar, PostCard, CreatePostModal, FeedSidebar, EditProfileModal } from '@/components';
+import {
+  Navbar,
+  Toast,
+  StoryBar,
+  PostCard,
+  CreatePostModal,
+  FeedSidebar,
+  EditProfileModal,
+  FeedSkeletonList,
+  EmptyFeedState,
+  MobileBottomNav,
+} from '@/components';
 import { Post, CreatePostRequest } from '@/types';
 
 export default function FeedPage() {
@@ -170,7 +181,7 @@ export default function FeedPage() {
   const allTags = Array.from(new Set(posts.flatMap(p => p.post_hashtags || [])));
 
   return (
-    <div style={styles.appContainer} className="animate-fade-in">
+    <div style={styles.appContainer} className="animate-fade-in feed-page-wrapper">
       <Toast message={toastMessage} />
 
       <Navbar
@@ -218,26 +229,13 @@ export default function FeedPage() {
             {error && <div style={styles.errorBanner}>{error}</div>}
 
             {loading ? (
-              <div style={styles.loadingContainer}>
-                <div style={styles.spinner} className="spinner"></div>
-                <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>Loading vibrant stories...</p>
-              </div>
+              <FeedSkeletonList count={3} />
             ) : filteredPosts.length === 0 ? (
-              <div style={styles.emptyState} className="glass">
-                <h3 style={{ fontSize: '1.3rem' }}>No posts found</h3>
-                <p style={{ color: 'var(--fg-muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  {activeTag !== 'all'
-                    ? `No stories found under #${activeTag}. Try another tag!`
-                    : 'Be the first to share an inspiring story on SimpleBlog!'}
-                </p>
-                <button
-                  className="btn btn-primary"
-                  style={{ marginTop: '1.25rem' }}
-                  onClick={() => setIsModalOpen(true)}
-                >
-                  Create Your First Post
-                </button>
-              </div>
+              <EmptyFeedState
+                activeTag={activeTag}
+                onResetTag={() => setActiveTag('all')}
+                onCreatePost={() => setIsModalOpen(true)}
+              />
             ) : (
               <div style={styles.postList}>
                 {filteredPosts.map(post => (
@@ -309,6 +307,25 @@ export default function FeedPage() {
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
         onSuccess={() => showToast('Profile updated successfully!')}
+      />
+
+      {/* Mobile Bottom Navigation Bar (Visible only on < 768px screens) */}
+      <MobileBottomNav
+        user={user}
+        activeTab={activeTag === 'all' ? 'home' : 'explore'}
+        onHomeClick={() => {
+          setActiveTag('all');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onCreateClick={() => setIsModalOpen(true)}
+        onSavedClick={() => {
+          if (savedPostIds.length > 0) {
+            showToast(`Anda memiliki ${savedPostIds.length} cerita tersimpan.`);
+          } else {
+            showToast('Belum ada cerita yang Anda simpan.');
+          }
+        }}
+        onProfileClick={() => setIsEditProfileOpen(true)}
       />
     </div>
   );

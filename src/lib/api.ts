@@ -7,10 +7,19 @@ const BASE_URL = API_BASE_URL;
  */
 export function getMediaUrl(filePath?: string | null): string | null {
   if (!filePath || typeof filePath !== 'string') return null;
-  if (filePath.startsWith('http://') || filePath.startsWith('https://') || filePath.startsWith('data:')) {
-    return filePath;
+  const trimmed = filePath.trim();
+  if (!trimmed) return null;
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
   }
-  const cleanPath = filePath.replace(/^\/+/, '');
+  // Replace Windows backslashes with forward slashes for valid URL paths
+  const normalized = trimmed.replace(/\\/g, '/');
+  const cleanPath = normalized.replace(/^\/+/, '');
   return `${API_BASE_URL}/${cleanPath}`;
 }
 

@@ -244,7 +244,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                   Uploading...
                 </span>
               ) : (
-                '📷 Attach Photo'
+                'ðŸ“· Attach Photo'
               )}
             </button>
 
@@ -316,11 +316,13 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--btn-secondary-bg)',
     border: 'none',
     color: 'var(--fg-muted)',
-    width: '32px',
-    height: '32px',
+    width: '40px',
+    height: '40px',
+    minWidth: '40px',
+    minHeight: '40px',
     borderRadius: '50%',
     cursor: 'pointer',
-    fontSize: '1.3rem',
+    fontSize: '1.4rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -391,3 +393,4 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: '0.75rem',
   },
 };
+
