@@ -13,6 +13,7 @@ interface PostCardProps {
   onBookmarkToggle: (postId: number) => void;
   onShare: (postId: number, title: string) => void;
   onSelectTag: (tag: string) => void;
+  onUserClick?: (userId: number, username?: string) => void;
 }
 
 export function PostCard({
@@ -23,6 +24,7 @@ export function PostCard({
   onBookmarkToggle,
   onShare,
   onSelectTag,
+  onUserClick,
 }: PostCardProps) {
   const [likeCount, setLikeCount] = useState<number | null>(null);
   const [commentCount, setCommentCount] = useState<number | null>(null);
@@ -97,7 +99,19 @@ export function PostCard({
     <article style={styles.postCard} className="glass glass-interactive">
       {/* Card Header: Author Profile */}
       <div style={styles.cardHeader}>
-        <div style={styles.authorRow}>
+        <div
+          style={{ ...styles.authorRow, cursor: onUserClick ? 'pointer' : 'default' }}
+          onClick={() => onUserClick?.(post.user_id, post.username)}
+          role={onUserClick ? 'button' : undefined}
+          tabIndex={onUserClick ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (onUserClick && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              onUserClick(post.user_id, post.username);
+            }
+          }}
+          title={onUserClick ? `Lihat profil @${post.username}` : undefined}
+        >
           <div className="story-avatar-wrap" style={{ width: '40px', height: '40px' }}>
             <div className="story-avatar-inner">
               <span style={styles.authorLetter}>

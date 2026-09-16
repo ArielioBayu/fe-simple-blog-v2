@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { postService, commentService, activityService } from '@/services';
-import { Navbar, Toast, PostDetailCard, CommentForm, CommentList } from '@/components';
+import { Navbar, Toast, PostDetailCard, CommentForm, CommentList, UserProfileModal } from '@/components';
 import { PostDetailResponseData } from '@/types';
 
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +19,17 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   // Comment state
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState('');
+
+  // User Profile Modal state
+  const [targetUserId, setTargetUserId] = useState<number | null>(null);
+  const [targetUsername, setTargetUsername] = useState<string | undefined>(undefined);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+
+  const handleOpenUserProfile = (userId: number, username?: string) => {
+    setTargetUserId(userId);
+    setTargetUsername(username);
+    setIsUserProfileOpen(true);
+  };
 
   // Toast & Animation
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -243,6 +254,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           onLikeToggle={handleLikeToggle}
           onBookmarkToggle={handleBookmarkToggle}
           onShare={handleShare}
+          onUserClick={handleOpenUserProfile}
         />
 
         {/* Comments Section */}
@@ -264,9 +276,20 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           />
 
           {/* Comments List Component */}
-          <CommentList comments={comments} />
+          <CommentList
+            comments={comments}
+            onUserClick={handleOpenUserProfile}
+          />
         </section>
       </main>
+
+      {/* User Profile Preview Modal (GET /accounts/profile/:id) */}
+      <UserProfileModal
+        isOpen={isUserProfileOpen}
+        userId={targetUserId}
+        fallbackUsername={targetUsername}
+        onClose={() => setIsUserProfileOpen(false)}
+      />
     </div>
   );
 }

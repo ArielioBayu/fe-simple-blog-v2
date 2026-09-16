@@ -12,6 +12,7 @@ import {
   CreatePostModal,
   FeedSidebar,
   EditProfileModal,
+  UserProfileModal,
   FeedSkeletonList,
   EmptyFeedState,
   MobileBottomNav,
@@ -35,6 +36,9 @@ export default function FeedPage() {
   // Modal & interactions
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [targetUserId, setTargetUserId] = useState<number | null>(null);
+  const [targetUsername, setTargetUsername] = useState<string | undefined>(undefined);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [savedPostIds, setSavedPostIds] = useState<number[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [animatingPostId, setAnimatingPostId] = useState<number | null>(null);
@@ -42,6 +46,12 @@ export default function FeedPage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2400);
+  };
+
+  const handleOpenUserProfile = (userId: number, username?: string) => {
+    setTargetUserId(userId);
+    setTargetUsername(username);
+    setIsUserProfileOpen(true);
   };
 
   // Auth guard & saved bookmarks loader
@@ -186,7 +196,7 @@ export default function FeedPage() {
 
       <Navbar
         onCreatePost={() => setIsModalOpen(true)}
-        onEditProfile={() => setIsEditProfileOpen(true)}
+        onEditProfile={() => router.push('/profile')}
         onHomeClick={() => setActiveTag('all')}
         onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)}
       />
@@ -248,6 +258,7 @@ export default function FeedPage() {
                     onBookmarkToggle={handleBookmarkToggle}
                     onShare={handleShare}
                     onSelectTag={setActiveTag}
+                    onUserClick={handleOpenUserProfile}
                   />
                 ))}
               </div>
@@ -290,6 +301,7 @@ export default function FeedPage() {
             activeTag={activeTag}
             onSelectTag={setActiveTag}
             onOpenCreateModal={() => setIsModalOpen(true)}
+            onOpenProfile={() => router.push('/profile')}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
           />
         </div>
@@ -309,6 +321,14 @@ export default function FeedPage() {
         onSuccess={() => showToast('Profile updated successfully!')}
       />
 
+      {/* Other User Profile Preview Modal (GET /accounts/profile/:id) */}
+      <UserProfileModal
+        isOpen={isUserProfileOpen}
+        userId={targetUserId}
+        fallbackUsername={targetUsername}
+        onClose={() => setIsUserProfileOpen(false)}
+      />
+
       {/* Mobile Bottom Navigation Bar (Visible only on < 768px screens) */}
       <MobileBottomNav
         user={user}
@@ -325,7 +345,7 @@ export default function FeedPage() {
             showToast('Belum ada cerita yang Anda simpan.');
           }
         }}
-        onProfileClick={() => setIsEditProfileOpen(true)}
+        onProfileClick={() => router.push('/profile')}
       />
     </div>
   );

@@ -62,6 +62,25 @@ export const authService = {
   },
 
   /**
+   * Fetches profile by user ID: GET /accounts/profile/:id (or /accounts/user/:id)
+   */
+  async getUserProfileById(userId: number | string): Promise<UserProfile | null> {
+    try {
+      const res = await apiFetch<UserProfile>(`/accounts/profile/${userId}`);
+      if (res.data) return res.data;
+    } catch {
+      // Fallback
+    }
+
+    try {
+      const fallback = await apiFetch<UserProfile>(`/accounts/user/${userId}`);
+      return fallback.data || null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
    * Updates user profile (bio, username, avatar_url, banner_url)
    */
   async updateProfile(data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> {

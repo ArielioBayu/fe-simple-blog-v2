@@ -13,6 +13,7 @@ interface PostDetailCardProps {
   onLikeToggle: () => void;
   onBookmarkToggle: () => void;
   onShare: () => void;
+  onUserClick?: (userId: number, username?: string) => void;
 }
 
 export function PostDetailCard({
@@ -24,6 +25,7 @@ export function PostDetailCard({
   onLikeToggle,
   onBookmarkToggle,
   onShare,
+  onUserClick,
 }: PostDetailCardProps) {
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '';
@@ -57,7 +59,19 @@ export function PostDetailCard({
     <article style={styles.card} className="glass">
       {/* Header: Author info & Share button */}
       <div style={styles.header}>
-        <div style={styles.authorRow}>
+        <div
+          style={{ ...styles.authorRow, cursor: onUserClick ? 'pointer' : 'default' }}
+          onClick={() => onUserClick?.(post.user_id, post.username)}
+          role={onUserClick ? 'button' : undefined}
+          tabIndex={onUserClick ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (onUserClick && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              onUserClick(post.user_id, post.username);
+            }
+          }}
+          title={onUserClick ? `Lihat profil @${post.username}` : undefined}
+        >
           <div className="story-avatar-wrap" style={{ width: '46px', height: '46px' }}>
             <div className="story-avatar-inner">
               <span style={styles.authorLetter}>

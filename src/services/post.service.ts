@@ -39,4 +39,24 @@ export const postService = {
   async getCommentCount(postId: string | number): Promise<ApiResponse<PostCommentCountData>> {
     return await apiFetch<PostCommentCountData>(`/posts/comment-count/${postId}`);
   },
+
+  /**
+   * Fetches all posts created by a specific user.
+   * Endpoint: GET /posts/user/:userId?pageIndex=1&pageSize=12
+   */
+  async getUserPosts(userId: string | number, pageIndex: number = 1, pageSize: number = 12): Promise<ApiResponse<Post[]>> {
+    try {
+      return await apiFetch<Post[]>(`/posts/user/${userId}?pageIndex=${pageIndex}&pageSize=${pageSize}`);
+    } catch {
+      // Fallback: Fetch all posts and filter by user_id
+      const allRes = await this.getAllPosts(1, 100);
+      const filtered = (allRes.data || []).filter(p => String(p.user_id) === String(userId));
+      return {
+        status: 200,
+        message: 'success get user posts',
+        data: filtered,
+      };
+    }
+  },
 };
+

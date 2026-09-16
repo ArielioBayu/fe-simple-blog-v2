@@ -13,6 +13,7 @@ interface FeedSidebarProps {
   onSelectTag: (tag: string) => void;
   onOpenCreateModal: () => void;
   onOpenEditProfile?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export function FeedSidebar({
@@ -24,6 +25,7 @@ export function FeedSidebar({
   onSelectTag,
   onOpenCreateModal,
   onOpenEditProfile,
+  onOpenProfile,
 }: FeedSidebarProps) {
   const { user } = useAuth();
   const username = user?.username || 'Creator';
@@ -34,6 +36,8 @@ export function FeedSidebar({
   // Real stats from backend (or fallback to calculated)
   const storiesCount = user?.stats?.stories_count !== undefined ? user.stats.stories_count : userStoriesCount;
   const likesCount = user?.stats?.likes_count !== undefined ? user.stats.likes_count : likedStoriesCount;
+
+  const handleProfileClick = onOpenProfile || onOpenEditProfile;
 
   return (
     <aside style={styles.sidebarColumn}>
@@ -50,9 +54,9 @@ export function FeedSidebar({
         <div style={styles.profileContent}>
           <div
             className="story-avatar-wrap"
-            style={{ width: '68px', height: '68px', marginTop: '-34px', cursor: onOpenEditProfile ? 'pointer' : 'default' }}
-            onClick={onOpenEditProfile}
-            title={onOpenEditProfile ? 'Change Profile Picture' : undefined}
+            style={{ width: '68px', height: '68px', marginTop: '-34px', cursor: handleProfileClick ? 'pointer' : 'default' }}
+            onClick={handleProfileClick}
+            title={handleProfileClick ? 'Lihat Profil' : undefined}
           >
             <div className="story-avatar-inner">
               {avatarSrc ? (
@@ -97,14 +101,14 @@ export function FeedSidebar({
             >
               + Write Story
             </button>
-            {onOpenEditProfile && (
+            {handleProfileClick && (
               <button
                 className="btn btn-secondary"
                 style={styles.actionBtn}
-                onClick={onOpenEditProfile}
-                title="Edit Bio & Photo"
+                onClick={handleProfileClick}
+                title="Lihat Detail Profil"
               >
-                Edit Profile
+                Lihat Profil
               </button>
             )}
           </div>

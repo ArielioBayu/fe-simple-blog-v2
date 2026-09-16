@@ -1,5 +1,5 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
-const BASE_URL = API_BASE_URL;
+﻿export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (API_BASE_URL + '/api/v1');
 
 /**
  * Resolves a backend relative media file path (e.g., "uploads/xxx.jpg")
@@ -196,3 +196,5 @@ function logoutRedirect() {
     window.location.href = '/login';
   }
 }
+
+

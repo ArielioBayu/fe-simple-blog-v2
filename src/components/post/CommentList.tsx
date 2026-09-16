@@ -5,9 +5,10 @@ import { Comment } from '@/types';
 
 interface CommentListProps {
   comments: Comment[] | null;
+  onUserClick?: (userId: number, username?: string) => void;
 }
 
-export function CommentList({ comments }: CommentListProps) {
+export function CommentList({ comments, onUserClick }: CommentListProps) {
   if (!comments || comments.length === 0) {
     return (
       <div style={styles.emptyComments} className="glass">
@@ -24,7 +25,19 @@ export function CommentList({ comments }: CommentListProps) {
     <div style={styles.commentsList}>
       {comments.map((comment) => (
         <div key={comment.id} style={styles.commentCard} className="glass glass-interactive">
-          <div style={styles.commentHeader}>
+          <div
+            style={{ ...styles.commentHeader, cursor: onUserClick ? 'pointer' : 'default' }}
+            onClick={() => onUserClick?.(comment.user_id, comment.username)}
+            role={onUserClick ? 'button' : undefined}
+            tabIndex={onUserClick ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (onUserClick && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onUserClick(comment.user_id, comment.username);
+              }
+            }}
+            title={onUserClick ? `Lihat profil @${comment.username}` : undefined}
+          >
             <div className="story-avatar-wrap" style={{ width: '36px', height: '36px' }}>
               <div className="story-avatar-inner">
                 <span style={styles.commentAvatarLetter}>
