@@ -14,6 +14,8 @@ interface PostCardProps {
   onShare: (postId: number, title: string) => void;
   onSelectTag: (tag: string) => void;
   onUserClick?: (userId: number, username?: string) => void;
+  currentUserId?: number | null;
+  onDeletePost?: (postId: number) => void;
 }
 
 export function PostCard({
@@ -25,6 +27,8 @@ export function PostCard({
   onShare,
   onSelectTag,
   onUserClick,
+  currentUserId,
+  onDeletePost,
 }: PostCardProps) {
   const [likeCount, setLikeCount] = useState<number | null>(null);
   const [commentCount, setCommentCount] = useState<number | null>(null);
@@ -122,31 +126,58 @@ export function PostCard({
           <div style={styles.authorMeta}>
             <div style={styles.authorNameRow}>
               <span style={styles.authorName}>@{post.username}</span>
-              <span style={styles.verifiedBadge} title="Verified Creator" aria-label="Verified Creator">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="#0095F6">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                </svg>
-              </span>
             </div>
             <span style={styles.postDate}>{formatDate(post.created_at)}</span>
           </div>
         </div>
 
-        {/* Share Button */}
-        <button
-          onClick={() => onShare(post.id, post.post_title)}
-          style={styles.headerActionBtn}
-          title="Share Story"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-        </button>
+        {/* Actions in header: Delete & Share */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {onDeletePost && (
+            <button
+              onClick={() => {
+                if (window.confirm('Apakah Anda yakin ingin menghapus cerita ini?')) {
+                  onDeletePost(post.id);
+                }
+              }}
+              style={{
+                ...styles.headerActionBtn,
+                color: '#EF4444',
+              }}
+              title="Hapus Cerita"
+              aria-label="Hapus Cerita"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
+          )}
+
+          {/* Share Button */}
+          <button
+            onClick={() => onShare(post.id, post.post_title)}
+            style={styles.headerActionBtn}
+            title="Bagikan Cerita"
+            aria-label="Bagikan Cerita"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {/* Post Title */}
+      <Link href={`/posts/${post.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+        <h3 style={styles.postTitle}>{post.post_title}</h3>
+      </Link>
 
       {/* Cover Image if attached */}
       {imageUrl && (
@@ -158,10 +189,6 @@ export function PostCard({
 
       {/* Card Content */}
       <div style={styles.cardBody}>
-        <Link href={`/posts/${post.id}`}>
-          <h3 style={styles.postTitle}>{post.post_title}</h3>
-        </Link>
-
         {postSnippet && (
           <p style={styles.postSnippet}>
             {postSnippet}
@@ -318,7 +345,7 @@ const styles: Record<string, React.CSSProperties> = {
   authorRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.75rem',
+    gap: '0.85rem',
   },
   authorLetter: {
     fontSize: '0.85rem',
@@ -328,16 +355,19 @@ const styles: Record<string, React.CSSProperties> = {
   authorMeta: {
     display: 'flex',
     flexDirection: 'column',
+    gap: '0.25rem',
+    justifyContent: 'center',
   },
   authorNameRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.35rem',
+    lineHeight: 1.25,
   },
   authorName: {
     fontWeight: 800,
     fontSize: '0.95rem',
     color: 'var(--heading-color)',
+    lineHeight: 1.25,
   },
   verifiedBadge: {
     display: 'inline-flex',
@@ -353,37 +383,40 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1,
   },
   postDate: {
-    fontSize: '0.75rem',
+    fontSize: '0.78rem',
     color: 'var(--fg-subtle)',
+    lineHeight: 1.2,
+    letterSpacing: '0.01em',
   },
   headerActionBtn: {
     background: 'none',
     border: 'none',
     color: 'var(--fg-muted)',
     cursor: 'pointer',
-    padding: '0.4rem',
-    minWidth: '44px',
-    minHeight: '44px',
+    padding: '0.35rem',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '50%',
+    borderRadius: 'var(--radius-sm, 6px)',
     transition: 'var(--transition)',
+    lineHeight: 1,
   },
   coverLink: {
     display: 'block',
     width: '100%',
-    maxHeight: '340px',
+    maxHeight: '380px',
     overflow: 'hidden',
     backgroundColor: 'var(--bg-input)',
     borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--elevation-1)',
   },
   coverImg: {
     width: '100%',
-    maxHeight: '340px',
+    maxHeight: '380px',
     objectFit: 'cover',
     display: 'block',
-    borderRadius: 'var(--radius-md)',
+    borderRadius: 'calc(var(--radius-md) - 1px)',
     transition: 'transform 0.35s ease',
   },
   cardBody: {
@@ -392,10 +425,12 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.65rem',
   },
   postTitle: {
-    fontSize: '1.25rem',
+    fontSize: '1.35rem',
     fontWeight: 800,
     color: 'var(--heading-color)',
-    lineHeight: '1.35',
+    lineHeight: '1.4',
+    letterSpacing: '-0.015em',
+    padding: '0.1rem 0',
     transition: 'var(--transition)',
   },
   postSnippet: {

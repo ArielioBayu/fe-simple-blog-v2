@@ -2,13 +2,17 @@
 
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context';
 import { postService, commentService, activityService } from '@/services';
-import { Navbar, Toast, PostDetailCard, CommentForm, CommentList, UserProfileModal } from '@/components';
+import { Navbar, Toast, PostDetailCard, CommentForm, CommentList, UserProfileModal, LeftNavSidebar } from '@/components';
 import { PostDetailResponseData } from '@/types';
 
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const postId = resolvedParams.id;
+  const router = useRouter();
+  const { user } = useAuth();
 
   const [postData, setPostData] = useState<PostDetailResponseData | null>(null);
   const [likeCount, setLikeCount] = useState<number | null>(null);
@@ -176,7 +180,19 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         // ignore
       }
     }
-    showToast('Post link ready to share');
+    showToast('URL: ' + window.location.href);
+  };
+
+  const handleDeletePost = async () => {
+    try {
+      await postService.deletePost(postId);
+      showToast('Cerita berhasil dihapus.');
+      setTimeout(() => {
+        router.push('/');
+      }, 700);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Gagal menghapus cerita.');
+    }
   };
 
   const handleCommentSubmit = async (content: string) => {
@@ -224,8 +240,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const { detail_post, liked_count, comments } = postData;
 
   return (
-    <div style={styles.pageContainer} className="animate-fade-in">
+    <div style={styles.pageContainer} className="animate-fade-in has-left-sidebar">
       <Toast message={toastMessage} />
+
+      {/* Left Navigation Sidebar */}
+      <LeftNavSidebar
+        onHomeClick={() => window.location.href = '/'}
+        onToast={showToast}
+      />
 
       <Navbar
         showBackToFeed
@@ -251,10 +273,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           commentCount={commentCount ?? (comments ? comments.length : 0)}
           isSaved={isSaved}
           isHeartAnimating={isHeartAnimating}
+          currentUserId={user?.id}
           onLikeToggle={handleLikeToggle}
           onBookmarkToggle={handleBookmarkToggle}
           onShare={handleShare}
           onUserClick={handleOpenUserProfile}
+          onDeletePost={handleDeletePost}
         />
 
         {/* Comments Section */}

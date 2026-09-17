@@ -4,3 +4,4 @@ export * from './Navbar';
 export * from './EditProfileModal';
 export * from './UserProfileModal';
 export * from './MobileBottomNav';
+export * from './LeftNavSidebar';

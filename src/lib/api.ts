@@ -1,4 +1,4 @@
-﻿export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (API_BASE_URL + '/api/v1');
 
 /**
@@ -107,8 +107,14 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
   try {
     const response = await fetch(url, fetchConfig);
 
-    // If 401 and we are not trying to log in or refresh token
-    if (response.status === 401 && !path.includes('/memberships/sign-in') && !path.includes('/memberships/refresh')) {
+    // If 401 and we are not trying to log in or refresh token or logout
+    if (
+      response.status === 401 &&
+      !path.includes('/sign-in') &&
+      !path.includes('/sign-up') &&
+      !path.includes('/refresh') &&
+      !path.includes('/sign-out')
+    ) {
       if (!isRefreshing) {
         isRefreshing = true;
         const refreshToken = localStorage.getItem('refresh_token');
@@ -119,7 +125,7 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
         }
 
         try {
-          const refreshRes = await fetch(`${BASE_URL}/memberships/refresh`, {
+          let refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -127,6 +133,18 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
             credentials: 'include',
             body: JSON.stringify({ token: refreshToken }),
           });
+
+          if (!refreshRes.ok) {
+            // Legacy fallback
+            refreshRes = await fetch(`${BASE_URL}/memberships/refresh`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({ token: refreshToken }),
+            });
+          }
 
           if (!refreshRes.ok) {
             throw new Error('Refresh failed');

@@ -10,10 +10,12 @@ interface PostDetailCardProps {
   commentCount?: number;
   isSaved: boolean;
   isHeartAnimating: boolean;
+  currentUserId?: number | null;
   onLikeToggle: () => void;
   onBookmarkToggle: () => void;
   onShare: () => void;
   onUserClick?: (userId: number, username?: string) => void;
+  onDeletePost?: () => void;
 }
 
 export function PostDetailCard({
@@ -22,10 +24,12 @@ export function PostDetailCard({
   commentCount,
   isSaved,
   isHeartAnimating,
+  currentUserId,
   onLikeToggle,
   onBookmarkToggle,
   onShare,
   onUserClick,
+  onDeletePost,
 }: PostDetailCardProps) {
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '';
@@ -82,25 +86,51 @@ export function PostDetailCard({
           <div style={styles.authorMeta}>
             <div style={styles.authorNameRow}>
               <span style={styles.authorName}>@{post.username}</span>
-              <span style={styles.verifiedBadge} title="Verified Creator" aria-label="Verified Creator">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="#0095F6">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                </svg>
-              </span>
             </div>
             <span style={styles.postDate}>{formatDate(post.created_at)}</span>
           </div>
         </div>
 
-        <button onClick={onShare} style={styles.shareBtn} title="Share Story" aria-label="Share story">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-        </button>
+        {/* Actions in header: Delete & Share */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {onDeletePost && (
+            <button
+              onClick={() => {
+                if (window.confirm('Apakah Anda yakin ingin menghapus cerita ini?')) {
+                  onDeletePost();
+                }
+              }}
+              style={{
+                ...styles.headerActionBtn,
+                color: '#EF4444',
+              }}
+              title="Hapus Cerita"
+              aria-label="Hapus Cerita"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
+          )}
+
+          <button
+            onClick={onShare}
+            style={styles.headerActionBtn}
+            title="Bagikan Cerita"
+            aria-label="Bagikan Cerita"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Post Title */}
@@ -232,17 +262,19 @@ const styles: Record<string, React.CSSProperties> = {
   authorMeta: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.15rem',
+    gap: '0.25rem',
+    justifyContent: 'center',
   },
   authorNameRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.45rem',
+    lineHeight: 1.25,
   },
   authorName: {
     fontWeight: 800,
     fontSize: '1rem',
     color: 'var(--heading-color)',
+    lineHeight: 1.25,
   },
   verifiedBadge: {
     display: 'inline-flex',
@@ -260,21 +292,21 @@ const styles: Record<string, React.CSSProperties> = {
   postDate: {
     fontSize: '0.78rem',
     color: 'var(--fg-subtle)',
+    lineHeight: 1.2,
+    letterSpacing: '0.01em',
   },
-  shareBtn: {
-    background: 'var(--btn-secondary-bg)',
-    border: '1px solid var(--border)',
+  headerActionBtn: {
+    background: 'none',
+    border: 'none',
     color: 'var(--fg-muted)',
-    width: '44px',
-    height: '44px',
-    minWidth: '44px',
-    minHeight: '44px',
-    borderRadius: '50%',
-    display: 'flex',
+    cursor: 'pointer',
+    padding: '0.35rem',
+    display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    cursor: 'pointer',
+    borderRadius: 'var(--radius-sm, 6px)',
     transition: 'var(--transition)',
+    lineHeight: 1,
   },
   postTitle: {
     fontSize: '1.85rem',

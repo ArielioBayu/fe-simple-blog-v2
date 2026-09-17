@@ -30,6 +30,19 @@ export function Navbar({
       <div style={styles.navContent} className="container">
         {/* Brand Logo */}
         <Link href="/" style={styles.brandLogo} onClick={onHomeClick}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/logo.png"
+            alt="SimpleBlog Logo"
+            style={{
+              width: '30px',
+              height: '30px',
+              borderRadius: '8px',
+              marginRight: '8px',
+              objectFit: 'cover',
+              boxShadow: '0 2px 8px rgba(225, 48, 108, 0.25)',
+            }}
+          />
           <span style={styles.logoSimple}>Simple</span>
           <span style={styles.logoBlog}>Blog</span>
         </Link>
@@ -54,7 +67,7 @@ export function Navbar({
                 <span>Create Post</span>
               </button>
             )
-          )}
+          )}  
 
           {/* User Profile Badge */}
           {username && (

@@ -570,3 +570,311 @@ button, .btn {
     margin-bottom: 1rem;
   }
 }
+
+/* ==========================================================================
+   Left Navigation Sidebar (Instagram-Style Symmetrical & Seamless Feed Color)
+   ========================================================================== */
+
+.left-nav-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 72px;
+  background-color: var(--bg-main); /* Sama persis dengan warna background halaman feed */
+  border-right: 1px solid var(--border);
+  z-index: 920;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px 12px 24px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: width, box-shadow;
+}
+
+.left-nav-sidebar:hover {
+  width: 220px;
+  box-shadow: 10px 0 30px -4px rgba(0, 0, 0, 0.22);
+}
+
+/* Menu Container - Centered to the marked middle area */
+.left-nav-menu {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  flex: 1;
+}
+
+/* Menu Items - Symmetrical Alignment */
+.left-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  padding: 0 2px;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  color: var(--fg-main);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  position: relative;
+  transition: background-color 0.18s ease, color 0.18s ease;
+  user-select: none;
+}
+
+.left-nav-item:hover {
+  background-color: var(--btn-secondary-hover);
+}
+
+.left-nav-item:active {
+  transform: scale(0.98);
+}
+
+.left-nav-item.active {
+  background-color: transparent;
+  color: var(--heading-color);
+  font-weight: 700;
+}
+
+.left-nav-item.active .left-nav-svg {
+  stroke-width: 2.5;
+  color: var(--heading-color);
+}
+
+.left-nav-icon-wrap {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.left-nav-svg {
+  transition: transform 0.18s ease;
+}
+
+.left-nav-item:hover .left-nav-svg {
+  transform: scale(1.06);
+}
+
+/* Red Badges */
+.left-nav-badge {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  background: #FF3040;
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  line-height: 17px;
+  border-radius: 999px;
+  text-align: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 6px rgba(255, 48, 64, 0.45);
+}
+
+.left-nav-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  background: #FF3040;
+  border-radius: 50%;
+  border: 2px solid var(--bg-main);
+  box-shadow: 0 0 6px rgba(255, 48, 64, 0.65);
+}
+
+/* Avatar Ring */
+.left-nav-avatar-ring {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.left-nav-item:hover .left-nav-avatar-ring,
+.left-nav-avatar-ring.active-ring {
+  border-color: var(--heading-color);
+  transform: scale(1.05);
+}
+
+.left-nav-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.left-nav-avatar-initial {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+/* Symmetrical Text Label */
+.left-nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(-8px);
+  max-width: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, max-width 0.28s ease, visibility 0.2s;
+}
+
+.left-nav-sidebar:hover .left-nav-label {
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 145px;
+  pointer-events: auto;
+  visibility: visible;
+  transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1) 0.05s, transform 0.25s cubic-bezier(0.25, 1, 0.5, 1) 0.05s, max-width 0.28s ease;
+}
+
+/* Footer & Popover */
+.left-nav-footer {
+  position: relative;
+  margin-top: auto;
+  padding-top: 8px;
+  padding-bottom: 14px;
+}
+
+.left-nav-others-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 220px;
+  background-color: var(--modal-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.55rem;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  animation: popoverFadeIn 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.left-nav-popover-header {
+  padding: 0.4rem 0.65rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-nav-popover-user {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.left-nav-popover-email {
+  font-size: 0.75rem;
+  color: var(--fg-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.left-nav-popover-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 0.35rem 0;
+}
+
+.left-nav-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--fg-main);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.left-nav-popover-item:hover {
+  background-color: var(--btn-secondary-hover);
+}
+
+.left-nav-popover-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.left-nav-popover-danger {
+  color: #EF4444;
+}
+
+.left-nav-popover-danger:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+}
+
+/* ==========================================================================
+   Responsive Layout Offset for Desktop with Sidebar
+   ========================================================================== */
+
+@media (min-width: 769px) {
+  .has-left-sidebar {
+    padding-left: 72px !important;
+    transition: padding-left 0.2s ease;
+  }
+}
+
+@media (max-width: 768px) {
+  .left-nav-sidebar {
+    display: none !important;
+  }
+  .has-left-sidebar {
+    padding-left: 0 !important;
+  }
+}
+

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context';
-import { CreatePostRequest } from '@/types';
+import { CreatePostRequest, UploadFileResponseData } from '@/types';
 import { uploadService } from '@/services';
 
 interface CreatePostModalProps {
@@ -20,10 +20,16 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   const [content, setContent] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [attachedImagePath, setAttachedImagePath] = useState<string | null>(null);
+  const [attachedUploadId, setAttachedUploadId] = useState<number | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
+
+  // My Media Gallery State (GET /upload/my-media)
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [mediaList, setMediaList] = useState<UploadFileResponseData[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,12 +78,41 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
       const res = await uploadService.uploadImage(file);
       if (res.data?.file_path) {
         setAttachedImagePath(res.data.file_path);
+        if (res.data.id) {
+          setAttachedUploadId(Number(res.data.id));
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleToggleGallery = async () => {
+    const nextState = !showMediaGallery;
+    setShowMediaGallery(nextState);
+    if (nextState && mediaList.length === 0) {
+      setLoadingMedia(true);
+      try {
+        const res = await uploadService.getMyMedia();
+        if (res && res.data) {
+          setMediaList(res.data);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoadingMedia(false);
+      }
+    }
+  };
+
+  const handleSelectFromGallery = (filePath: string, uploadId?: number) => {
+    setAttachedImagePath(filePath);
+    if (uploadId) {
+      setAttachedUploadId(Number(uploadId));
+    }
+    setShowMediaGallery(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,26 +125,23 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
       .map(t => t.trim().toLowerCase().replace(/^#/, ''))
       .filter(t => t.length > 0);
 
-    // If there is an attached image, embed it in markdown if not already embedded
-    let finalContent = content.trim();
-    if (attachedImagePath) {
-      const fullUrl = uploadService.getImageUrl(attachedImagePath);
-      if (fullUrl && !finalContent.includes(fullUrl)) {
-        finalContent = `${finalContent}\n\n![Cover Photo](${fullUrl})`;
-      }
-    }
+    const finalContent = content.trim();
 
     try {
       await onSubmit({
-        post_title: title,
+        post_title: title.trim(),
         post_content: finalContent,
         post_hashtags: hashtagsArr,
+        file_path: attachedImagePath || undefined,
+        filepath: attachedImagePath || undefined,
+        upload_id: attachedUploadId || undefined,
       });
 
       setTitle('');
       setContent('');
       setHashtags('');
       setAttachedImagePath(null);
+      setAttachedUploadId(null);
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to publish story');
@@ -205,11 +237,69 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
               <button
                 type="button"
                 style={styles.removeImageBtn}
-                onClick={() => setAttachedImagePath(null)}
-                title="Remove image"
+                onClick={() => {
+                  setAttachedImagePath(null);
+                  setAttachedUploadId(null);
+                }}
+                title="Hapus foto sampul"
               >
                 &times;
               </button>
+            </div>
+          )}
+
+          {/* Media Gallery Panel (GET /upload/my-media) */}
+          {showMediaGallery && (
+            <div style={styles.galleryContainer}>
+              <div style={styles.galleryHeader}>
+                <span style={styles.galleryTitle}>Pilih dari Galeri Unggahan Saya</span>
+                <button
+                  type="button"
+                  style={styles.galleryCloseBtn}
+                  onClick={() => setShowMediaGallery(false)}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {loadingMedia ? (
+                <div style={styles.galleryLoading}>
+                  <div className="spinner" style={{ width: '18px', height: '18px', border: '2px solid var(--social-blue)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>Memuat media Anda...</span>
+                </div>
+              ) : mediaList.length === 0 ? (
+                <div style={styles.galleryEmpty}>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--fg-subtle)', margin: 0 }}>
+                    Belum ada media yang pernah Anda unggah.
+                  </p>
+                </div>
+              ) : (
+                <div style={styles.galleryGrid}>
+                  {mediaList.map(media => {
+                    const thumbUrl = uploadService.getImageUrl(media.file_path);
+                    const isSelected = attachedImagePath === media.file_path;
+                    return (
+                      <button
+                        key={media.id || media.file_path}
+                        type="button"
+                        onClick={() => handleSelectFromGallery(media.file_path, media.id)}
+                        style={{
+                          ...styles.galleryItem,
+                          borderColor: isSelected ? 'var(--social-blue)' : 'transparent',
+                        }}
+                        title={media.file_name || 'Media'}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={thumbUrl || ''}
+                          alt={media.file_name || 'Upload'}
+                          style={styles.galleryImg}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -231,22 +321,56 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
               onChange={handleImageFileChange}
               style={{ display: 'none' }}
             />
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ marginRight: 'auto', fontSize: '0.82rem', padding: '0.5rem 0.95rem' }}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingImage || loading}
-            >
-              {uploadingImage ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span className="spinner" style={{ width: '12px', height: '12px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }}></span>
-                  Uploading...
-                </span>
-              ) : (
-                'ðŸ“· Attach Photo'
-              )}
-            </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: 'auto' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ fontSize: '0.82rem', padding: '0.45rem 0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage || loading}
+                title="Unggah Foto Baru"
+              >
+                {uploadingImage ? (
+                  <>
+                    <span className="spinner" style={{ width: '12px', height: '12px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }}></span>
+                    Mengunggah...
+                  </>
+                ) : (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Unggah Foto
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{
+                  fontSize: '0.82rem',
+                  padding: '0.45rem 0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: showMediaGallery ? 'var(--bg-active, rgba(0, 149, 246, 0.12))' : undefined,
+                  color: showMediaGallery ? 'var(--social-blue)' : undefined,
+                }}
+                onClick={handleToggleGallery}
+                disabled={loading}
+                title="Pilih dari Galeri Unggahan"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                Galeri Saya
+              </button>
+            </div>
 
             <button
               type="button"
@@ -254,14 +378,14 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
               onClick={onClose}
               disabled={loading}
             >
-              Discard
+              Batal
             </button>
             <button
               type="submit"
               className="btn btn-primary"
               disabled={loading || uploadingImage || !title.trim() || !content.trim()}
             >
-              {loading ? 'Publishing...' : 'Share Story'}
+              {loading ? 'Mempublikasikan...' : 'Bagikan Cerita'}
             </button>
           </div>
         </form>
@@ -391,6 +515,70 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'flex-end',
     gap: '0.85rem',
     marginTop: '0.75rem',
+  },
+  galleryContainer: {
+    backgroundColor: 'var(--bg-elevated, rgba(255, 255, 255, 0.04))',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    padding: '0.85rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  galleryHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  galleryTitle: {
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    color: 'var(--heading-color)',
+  },
+  galleryCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--fg-muted)',
+    cursor: 'pointer',
+    fontSize: '1.2rem',
+    lineHeight: 1,
+    padding: '0 4px',
+  },
+  galleryLoading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '1.5rem 0',
+  },
+  galleryEmpty: {
+    textAlign: 'center',
+    padding: '1rem 0',
+  },
+  galleryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+    gap: '0.5rem',
+    maxHeight: '190px',
+    overflowY: 'auto',
+    paddingRight: '4px',
+  },
+  galleryItem: {
+    position: 'relative',
+    aspectRatio: '1 / 1',
+    borderRadius: 'var(--radius-sm, 6px)',
+    overflow: 'hidden',
+    border: '2px solid transparent',
+    padding: 0,
+    cursor: 'pointer',
+    background: 'var(--bg-card)',
+    transition: 'var(--transition)',
+  },
+  galleryImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
   },
 };
 

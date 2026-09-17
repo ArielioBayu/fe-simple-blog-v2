@@ -7,3 +7,6 @@ export interface MediaUpload {
   file_size: number;
   created_at: string;
 }
+
+export type UploadFileResponseData = MediaUpload;
+

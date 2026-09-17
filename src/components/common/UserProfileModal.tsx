@@ -46,7 +46,7 @@ function UserProfileModalContent({
     };
   }, [onClose]);
 
-  // Fetch target user profile by ID using GET /accounts/profile/:id
+  // Fetch target user profile by ID using backend API: GET /profile/:id
   useEffect(() => {
     let ignore = false;
 
@@ -61,13 +61,13 @@ function UserProfileModalContent({
           if (data) {
             setProfile(data);
           } else {
-            // If API returned null/404, fallback to minimal representation if we have username
+            // If API returned null/404, fallback to minimal structure with no hardcoded bio
             if (fallbackUsername) {
               setProfile({
                 id: userId,
                 username: fallbackUsername,
                 email: '',
-                bio: 'Creator & Storyteller on SimpleBlog',
+                bio: '',
                 created_at: new Date().toISOString(),
                 stats: {
                   stories_count: 0,
@@ -111,9 +111,17 @@ function UserProfileModalContent({
 
   const isCurrentUser = currentUser?.id === userId;
   const username = profile?.username || fallbackUsername || 'Pengguna';
-  const bio = profile?.bio || 'Creator & Storyteller on SimpleBlog';
-  const avatarUrl = profile?.avatar_url && !avatarError ? uploadService.getImageUrl(profile.avatar_url) : null;
-  const bannerUrl = profile?.banner_url ? uploadService.getImageUrl(profile.banner_url) : null;
+
+  // Real bio from API response JSON - without hardcode
+  const rawBio = typeof profile?.bio === 'string' ? profile.bio.trim() : '';
+  const hasBio = rawBio.length > 0;
+  const displayBio = hasBio ? rawBio : 'belum ada bio';
+
+  // Real avatar & banner from API response JSON
+  const rawAvatar = profile?.avatar_url || (profile as unknown as { avatar?: string })?.avatar || null;
+  const rawBanner = profile?.banner_url || (profile as unknown as { banner?: string })?.banner || null;
+  const avatarUrl = rawAvatar && !avatarError ? uploadService.getImageUrl(rawAvatar) : null;
+  const bannerUrl = rawBanner ? uploadService.getImageUrl(rawBanner) : null;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -131,20 +139,32 @@ function UserProfileModalContent({
   return (
     <div style={styles.overlay} onClick={handleBackdropClick}>
       <div style={styles.modalCard} className="glass animate-scale-up" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
-        {/* Close Button */}
+        {/* Tombol Silang (Close Button) di Atas Modal */}
         <button
           style={styles.closeBtn}
           onClick={onClose}
           aria-label="Tutup modal profil"
           title="Tutup"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ display: 'block' }}
+          >
+            <path
+              d="M18 6L6 18M6 6L18 18"
+              stroke="#FFFFFF"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
 
-        {/* Banner Cover */}
+        {/* Banner Cover (Dari API atau fallback gradasi ambient) */}
         <div
           style={{
             ...styles.banner,
@@ -164,7 +184,7 @@ function UserProfileModalContent({
 
         {/* Content Container */}
         <div style={styles.content}>
-          {/* Avatar Row */}
+          {/* Avatar Row (Foto user dari API atau inisial) */}
           <div style={styles.avatarRow}>
             <div className="story-avatar-wrap" style={{ width: '84px', height: '84px' }}>
               <div className="story-avatar-inner" style={{ position: 'relative' }}>
@@ -211,22 +231,17 @@ function UserProfileModalContent({
                 style={{ marginTop: '1rem', padding: '0.5rem 1.25rem' }}
                 onClick={onClose}
               >
-                Tutup
+                Close Profile
               </button>
             </div>
           ) : (
-            /* User Info & Stats */
+            /* User Info, Bio & Stats */
             <>
               <div style={styles.headerInfo}>
                 <div style={styles.nameRow}>
                   <h3 id="user-modal-title" style={styles.username}>
                     @{username}
                   </h3>
-                  <span style={styles.verifiedBadge} title="Verified Creator" aria-label="Verified Creator">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#0095F6">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                    </svg>
-                  </span>
                 </div>
 
                 {profile?.email && (
@@ -240,9 +255,18 @@ function UserProfileModalContent({
                 )}
               </div>
 
-              {/* Bio */}
+              {/* Bio: Diambil langsung dari respons API, atau "belum ada bio" jika kosong */}
               <div style={styles.bioContainer}>
-                <p style={styles.bioText}>&ldquo;{bio}&rdquo;</p>
+                <p
+                  style={{
+                    ...styles.bioText,
+                    fontStyle: hasBio ? 'normal' : 'italic',
+                    color: hasBio ? 'var(--fg-primary)' : 'var(--fg-muted)',
+                    opacity: hasBio ? 1 : 0.85,
+                  }}
+                >
+                  {hasBio ? `“${displayBio}”` : displayBio}
+                </p>
               </div>
 
               {/* Metrics & Social Stats */}
@@ -290,7 +314,7 @@ function UserProfileModalContent({
                     style={styles.actionBtn}
                     onClick={onClose}
                   >
-                    Tutup Sekilas Profil
+                    Close Profile
                   </button>
                 )}
               </div>
@@ -360,18 +384,20 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     top: '12px',
     right: '12px',
-    zIndex: 10,
+    zIndex: 20,
     width: '36px',
     height: '36px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.72)',
+    border: '1.5px solid rgba(255, 255, 255, 0.4)',
     color: '#ffffff',
-    border: 'none',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
     backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
     transition: 'transform 0.15s ease, background-color 0.15s ease',
   },
   banner: {
@@ -454,8 +480,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   bioText: {
     fontSize: '0.88rem',
-    fontStyle: 'italic',
-    color: 'var(--fg-primary)',
     lineHeight: 1.45,
     margin: 0,
   },

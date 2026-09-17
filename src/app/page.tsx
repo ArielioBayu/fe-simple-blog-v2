@@ -16,6 +16,7 @@ import {
   FeedSkeletonList,
   EmptyFeedState,
   MobileBottomNav,
+  LeftNavSidebar,
 } from '@/components';
 import { Post, CreatePostRequest } from '@/types';
 
@@ -160,6 +161,16 @@ export default function FeedPage() {
     });
   };
 
+  const handleDeletePost = async (postId: number) => {
+    try {
+      await postService.deletePost(postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      showToast('Cerita berhasil dihapus.');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Gagal menghapus cerita.');
+    }
+  };
+
   const handleShare = async (postId: number, postTitle: string) => {
     const url = `${window.location.origin}/posts/${postId}`;
     if (navigator.clipboard) {
@@ -190,14 +201,32 @@ export default function FeedPage() {
 
   const allTags = Array.from(new Set(posts.flatMap(p => p.post_hashtags || [])));
 
+  const handleHomeRefresh = async () => {
+    setActiveTag('all');
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      await refetchFirstPage();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Beranda berhasil diperbarui.');
+  };
+
   return (
-    <div style={styles.appContainer} className="animate-fade-in feed-page-wrapper">
+    <div style={styles.appContainer} className="animate-fade-in feed-page-wrapper has-left-sidebar">
       <Toast message={toastMessage} />
+
+      {/* Left Navigation Sidebar */}
+      <LeftNavSidebar
+        onHomeClick={handleHomeRefresh}
+        onEditProfile={() => setIsEditProfileOpen(true)}
+        onToast={showToast}
+      />
 
       <Navbar
         onCreatePost={() => setIsModalOpen(true)}
         onEditProfile={() => router.push('/profile')}
-        onHomeClick={() => setActiveTag('all')}
+        onHomeClick={handleHomeRefresh}
         onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)}
       />
 
@@ -252,6 +281,7 @@ export default function FeedPage() {
                   <PostCard
                     key={post.id}
                     post={post}
+                    currentUserId={user?.id}
                     isSaved={savedPostIds.includes(post.id)}
                     isHeartAnimating={animatingPostId === post.id}
                     onLikeToggle={handleLikeToggle}
@@ -259,6 +289,7 @@ export default function FeedPage() {
                     onShare={handleShare}
                     onSelectTag={setActiveTag}
                     onUserClick={handleOpenUserProfile}
+                    onDeletePost={handleDeletePost}
                   />
                 ))}
               </div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
 import { authService, postService, uploadService } from '@/services';
 import { Post, UserProfile } from '@/types';
-import { Navbar, Toast, EditProfileModal } from '@/components';
+import { Navbar, Toast, EditProfileModal, LeftNavSidebar } from '@/components';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -133,8 +133,15 @@ export default function ProfilePage() {
   const savedCount = currentUser?.stats?.saved_count ?? savedPosts.length;
 
   return (
-    <div style={styles.pageWrapper} className="animate-fade-in">
+    <div style={styles.pageWrapper} className="animate-fade-in has-left-sidebar">
       <Toast message={toastMessage} />
+
+      {/* Left Navigation Sidebar */}
+      <LeftNavSidebar
+        onHomeClick={() => router.push('/')}
+        onEditProfile={() => setIsEditProfileOpen(true)}
+        onToast={showToast}
+      />
 
       <Navbar
         onCreatePost={() => router.push('/')}
@@ -245,11 +252,6 @@ export default function ProfilePage() {
             <div style={styles.userInfoSection}>
               <div style={styles.usernameTitleRow}>
                 <h1 style={styles.profileUsername}>@{username}</h1>
-                <span style={styles.verifiedBadge} title="Verified Creator" aria-label="Verified Creator">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#0095F6">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                </span>
               </div>
 
               {currentUser?.email && (
