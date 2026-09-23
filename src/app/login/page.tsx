@@ -1,9 +1,36 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useTheme } from '@/context';
+import { SessionExpiredModal, OtpVerificationModal } from '@/components/common';
+
+/**
+ * Component that reads useSearchParams() — wrapped in <Suspense>
+ * to avoid Next.js static-generation bailout.
+ */
+function LoginQueryDetector({
+  onSessionExpired,
+  onVerifiedNotice,
+}: {
+  onSessionExpired: () => void;
+  onVerifiedNotice: () => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('session') === 'expired') {
+      const t = setTimeout(onSessionExpired, 320);
+      return () => clearTimeout(t);
+    }
+    if (searchParams.get('verified') === 'true') {
+      const t = setTimeout(onVerifiedNotice, 250);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams, onSessionExpired, onVerifiedNotice]);
+  return null;
+}
 
 // 3 Dynamic Transparent Story Showcase Graphics
 const DYNAMIC_HERO_IMAGES = [
@@ -25,8 +52,46 @@ const DYNAMIC_HERO_IMAGES = [
 ];
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  // Session expired modal — triggered by LoginQueryDetector child
+  const [showSessionExpired, setShowSessionExpired] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+
+  const handleSessionExpiredDetected = React.useCallback(() => {
+    setShowSessionExpired(true);
+  }, []);
+
+  const handleVerifiedDetected = React.useCallback(() => {
+    setInfoNotice('Email Anda berhasil diverifikasi! Silakan masuk dengan akun Anda.');
+    setTimeout(() => {
+      setInfoNotice(null);
+    }, 6000);
+  }, []);
+
+  const handleSessionExpiredClose = () => {
+    setShowSessionExpired(false);
+    // Clean query param without full page reload
+    router.replace('/login', { scroll: false });
+  };
+
+  const handleOtpSuccess = () => {
+    setShowOtpModal(false);
+    setInfoNotice('Akun Anda telah aktif dan terverifikasi! Silakan klik Masuk untuk melanjutkan.');
+    setTimeout(() => {
+      setInfoNotice(null);
+    }, 6000);
+  };
+
+  // If already authenticated with a valid session, redirect to /
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      router.replace('/');
+    }
+  }, [authLoading, isAuthenticated, user, router]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -59,8 +124,21 @@ export default function LoginPage() {
     try {
       await login({ email, password });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Login gagal. Periksa kembali nomor ponsel, nama pengguna, atau kata sandi Anda.';
-      setError(msg);
+      const isUnverified =
+        (err as { status?: number })?.status === 403 ||
+        (err instanceof Error && (
+          err.message.toLowerCase().includes('not verified') ||
+          err.message.toLowerCase().includes('verify your email')
+        ));
+
+      if (isUnverified) {
+        setOtpEmail(email);
+        setShowOtpModal(true);
+        setError('Akun Anda belum diverifikasi. Masukkan 6 digit kode OTP yang telah dikirimkan ke email Anda.');
+      } else {
+        const msg = err instanceof Error ? err.message : 'Login gagal. Periksa kembali nomor ponsel, nama pengguna, atau kata sandi Anda.';
+        setError(msg);
+      }
       setSubmitting(false);
     }
   };
@@ -105,7 +183,7 @@ export default function LoginPage() {
         {/* Top Header Bar: Logo aligned to left of container, Theme toggle aligned to right */}
         <header className="login-top-header">
           <div style={styles.brandLogoGroup}>
-            <div style={styles.customLogoBadge}>
+            <div className="auth-brand-badge" style={styles.customLogoBadge}>
               {/* Creative Modern SimpleBlog Emblem: Glowing Story Prism & Feather Nib */}
               <svg width="34" height="34" viewBox="0 0 36 36" fill="none">
                 <defs>
@@ -148,6 +226,7 @@ export default function LoginPage() {
           {/* Theme Switcher Button */}
           <button
             id="theme-toggle-btn"
+            className="auth-theme-toggle"
             onClick={toggleTheme}
             style={{
               ...styles.themeToggleBtn,
@@ -278,6 +357,7 @@ export default function LoginPage() {
                   placeholder="Nomor ponsel, nama pengguna, atau email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="auth-input-field"
                   style={{
                     ...styles.textInput,
                     backgroundColor: isDark ? '#1C1C1E' : '#FAFAFA',
@@ -298,6 +378,7 @@ export default function LoginPage() {
                     placeholder="Kata sandi"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="auth-input-field"
                     style={{
                       ...styles.textInput,
                       paddingRight: '5rem',
@@ -312,6 +393,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      className="auth-showhide-toggle"
                       style={styles.showHideToggle}
                     >
                       {showPassword ? 'Sembunyikan' : 'Tampilkan'}
@@ -323,6 +405,7 @@ export default function LoginPage() {
               {/* Login Button */}
               <button
                 type="submit"
+                className="auth-primary-btn"
                 style={{
                   ...styles.loginSubmitBtn,
                   opacity: submitting || !email || !password ? 0.7 : 1,
@@ -345,6 +428,7 @@ export default function LoginPage() {
             <div style={styles.forgotPasswordContainer}>
               <Link
                 href="/login"
+                className="auth-forgot-link"
                 style={{
                   ...styles.forgotPasswordText,
                   color: isDark ? '#A8A8A8' : '#6B7280',
@@ -366,6 +450,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGoogleLogin}
+              className="auth-google-btn"
               style={{
                 ...styles.googleAuthBtn,
                 backgroundColor: isDark ? '#1E293B' : '#F3F4F6',
@@ -396,7 +481,7 @@ export default function LoginPage() {
 
             {/* Create New Account Button */}
             <div style={styles.createAccountWrapper}>
-              <Link href="/register" style={styles.createAccountButton}>
+              <Link href="/register" className="auth-secondary-btn" style={styles.createAccountButton}>
                 Buat akun baru
               </Link>
             </div>
@@ -437,6 +522,28 @@ export default function LoginPage() {
         <span style={styles.copyrightLabel}>© 2026 SimpleBlog from Bayu Aji</span>
       </div>
     </footer>
+
+    {/* Query Params Detector (Wrapped in Suspense) */}
+    <Suspense fallback={null}>
+      <LoginQueryDetector
+        onSessionExpired={handleSessionExpiredDetected}
+        onVerifiedNotice={handleVerifiedDetected}
+      />
+    </Suspense>
+
+    {/* Session Expired Modal */}
+    <SessionExpiredModal
+      visible={showSessionExpired}
+      onClose={handleSessionExpiredClose}
+    />
+
+    {/* OTP Verification Modal */}
+    <OtpVerificationModal
+      visible={showOtpModal}
+      email={otpEmail || email}
+      onClose={() => setShowOtpModal(false)}
+      onSuccess={handleOtpSuccess}
+    />
   </div>
   );
 }

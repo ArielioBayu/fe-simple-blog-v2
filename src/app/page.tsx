@@ -57,8 +57,9 @@ export default function FeedPage() {
 
   // Auth guard & saved bookmarks loader
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && !user) {
-      router.push('/login');
+    if (!authLoading && (!isAuthenticated || !user)) {
+      router.replace('/login');
+      return;
     }
 
     try {
@@ -211,6 +212,14 @@ export default function FeedPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast('Beranda berhasil diperbarui.');
   };
+
+  if (authLoading || !isAuthenticated || !user) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
+        <div className="spinner" style={{ width: '38px', height: '38px', border: '3px solid var(--social-blue)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+      </div>
+    );
+  }
 
   return (
     <div style={styles.appContainer} className="animate-fade-in feed-page-wrapper has-left-sidebar">

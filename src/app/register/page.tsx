@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useTheme } from '@/context';
+import { useAuth, useTheme } from '@/context';
 import { authService } from '@/services';
+import { OtpVerificationModal } from '@/components/common';
 
 // 3 Dynamic Transparent Story Showcase Graphics
 const DYNAMIC_HERO_IMAGES = [
@@ -28,7 +29,15 @@ const DYNAMIC_HERO_IMAGES = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  // If already authenticated with a valid session, redirect to /
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      router.replace('/');
+    }
+  }, [authLoading, isAuthenticated, user, router]);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -37,6 +46,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   // Dynamic image index: randomizes on refresh
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -62,10 +73,9 @@ export default function RegisterPage() {
 
     try {
       await authService.signUp({ username, email, password });
+      setRegisteredEmail(email);
       setSuccess(true);
-      setTimeout(() => {
-        router.push('/login');
-      }, 1500);
+      setShowOtpModal(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Pendaftaran gagal. Silakan coba username atau email lain.';
       setError(msg);
@@ -98,7 +108,7 @@ export default function RegisterPage() {
         {/* Top Header Bar: Logo aligned to left of container, Theme toggle aligned to right */}
         <header className="login-top-header">
           <div style={styles.brandLogoGroup}>
-            <div style={styles.customLogoBadge}>
+            <div className="auth-brand-badge" style={styles.customLogoBadge}>
               <svg width="34" height="34" viewBox="0 0 36 36" fill="none">
                 <defs>
                   <linearGradient id="sbRegBrandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -137,6 +147,7 @@ export default function RegisterPage() {
           {/* Theme Switcher Button */}
           <button
             id="reg-theme-toggle-btn"
+            className="auth-theme-toggle"
             onClick={toggleTheme}
             style={{
               ...styles.themeToggleBtn,
@@ -270,6 +281,7 @@ export default function RegisterPage() {
                     placeholder="Nama Pengguna (Username)"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    className="auth-input-field"
                     style={{
                       ...styles.textInput,
                       backgroundColor: isDark ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
@@ -290,6 +302,7 @@ export default function RegisterPage() {
                     placeholder="Alamat Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="auth-input-field"
                     style={{
                       ...styles.textInput,
                       backgroundColor: isDark ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
@@ -310,6 +323,7 @@ export default function RegisterPage() {
                       placeholder="Kata Sandi (Min. 6 karakter)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      className="auth-input-field"
                       style={{
                         ...styles.textInput,
                         paddingRight: '5rem',
@@ -325,6 +339,7 @@ export default function RegisterPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        className="auth-showhide-toggle"
                         style={styles.showHideToggle}
                       >
                         {showPassword ? 'Sembunyikan' : 'Tampilkan'}
@@ -336,6 +351,7 @@ export default function RegisterPage() {
                 {/* Submit Register Button */}
                 <button
                   type="submit"
+                  className="auth-primary-btn"
                   style={{
                     ...styles.registerSubmitBtn,
                     opacity: loading || !username || !email || !password ? 0.7 : 1,
@@ -371,7 +387,7 @@ export default function RegisterPage() {
 
               {/* Link to Login */}
               <div style={styles.loginLinkWrapper}>
-                <Link href="/login" style={styles.loginLinkButton}>
+                <Link href="/login" className="auth-secondary-btn" style={styles.loginLinkButton}>
                   Masuk ke Akun Anda
                 </Link>
               </div>
@@ -412,6 +428,16 @@ export default function RegisterPage() {
           <span style={styles.copyrightLabel}>© 2026 SimpleBlog from Bayu Aji</span>
         </div>
       </footer>
+
+      {/* OTP Verification Modal */}
+      <OtpVerificationModal
+        visible={showOtpModal}
+        email={registeredEmail || email}
+        onClose={() => setShowOtpModal(false)}
+        onSuccess={() => {
+          router.push('/login?verified=true');
+        }}
+      />
     </div>
   );
 }

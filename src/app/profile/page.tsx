@@ -28,8 +28,8 @@ export default function ProfilePage() {
 
   // Auth guard
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && !authUser) {
-      router.push('/login');
+    if (!authLoading && (!isAuthenticated || !authUser)) {
+      router.replace('/login');
     }
   }, [authLoading, isAuthenticated, authUser, router]);
 
@@ -131,6 +131,14 @@ export default function ProfilePage() {
   const storiesCount = currentUser?.stats?.stories_count ?? userPosts.length;
   const likesCount = currentUser?.stats?.likes_count ?? 0;
   const savedCount = currentUser?.stats?.saved_count ?? savedPosts.length;
+
+  if (authLoading || !isAuthenticated || !authUser) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
+        <div className="spinner" style={{ width: '38px', height: '38px', border: '3px solid var(--social-blue)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+      </div>
+    );
+  }
 
   return (
     <div style={styles.pageWrapper} className="animate-fade-in has-left-sidebar">

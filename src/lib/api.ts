@@ -33,6 +33,18 @@ export interface ApiResponse<T = unknown> {
   };
 }
 
+export class ApiError extends Error {
+  status: number;
+  data?: unknown;
+
+  constructor(message: string, status: number, data?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 export interface FetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
@@ -193,7 +205,7 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || `Request failed with status ${response.status}`);
+      throw new ApiError(errData.message || `Request failed with status ${response.status}`, response.status, errData);
     }
 
     const contentType = response.headers.get('content-type');
@@ -209,9 +221,35 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
   }
 }
 
-function logoutRedirect() {
+export function isTokenExpired(token: string | null): boolean {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return true;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const decoded = JSON.parse(jsonPayload);
+    if (!decoded.exp) return false;
+    // Buffer of 30 seconds before actual expiration
+    return Date.now() >= (decoded.exp * 1000 - 30000);
+  } catch {
+    return true;
+  }
+}
+
+export function logoutRedirect() {
   if (typeof window !== 'undefined') {
-    window.location.href = '/login';
+    localStorage.clear();
+    deleteCookie('access_token');
+    if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      window.location.href = '/login?session=expired';
+    }
   }
 }
 

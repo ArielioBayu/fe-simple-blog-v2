@@ -5,3 +5,5 @@ export * from './EditProfileModal';
 export * from './UserProfileModal';
 export * from './MobileBottomNav';
 export * from './LeftNavSidebar';
+export * from './SessionExpiredModal';
+export * from './OtpVerificationModal';

@@ -572,6 +572,208 @@ button, .btn {
 }
 
 /* ==========================================================================
+   Premium Auth Interactive Elements & Hover Micro-Animations
+   ========================================================================== */
+
+/* 1. Primary Action Button (Login & Register) */
+.auth-primary-btn {
+  position: relative !important;
+  overflow: hidden !important;
+  transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.2s ease,
+              filter 0.2s ease,
+              opacity 0.2s ease !important;
+  will-change: transform, box-shadow;
+  z-index: 1;
+}
+
+/* Shimmer beam sweep */
+.auth-primary-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 75%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.32) 50%,
+    transparent 100%
+  );
+  transform: skewX(-24deg);
+  transition: none;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.auth-primary-btn:not(:disabled):hover::after {
+  left: 190%;
+  transition: left 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.auth-primary-btn:not(:disabled):hover {
+  transform: translateY(-2.5px) scale(1.012) !important;
+  box-shadow: 0 10px 26px -3px rgba(0, 149, 246, 0.48), 0 0 18px rgba(0, 149, 246, 0.28) !important;
+  filter: brightness(1.06);
+}
+
+.auth-primary-btn:not(:disabled):active {
+  transform: translateY(0.5px) scale(0.985) !important;
+  box-shadow: 0 4px 12px rgba(0, 149, 246, 0.3) !important;
+  transition-duration: 0.08s !important;
+}
+
+/* 2. Secondary Outline Button (Buat akun baru / Masuk ke Akun Anda) */
+.auth-secondary-btn {
+  position: relative !important;
+  overflow: hidden !important;
+  transition: all 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  will-change: transform, box-shadow, background-color, border-color;
+  z-index: 1;
+}
+
+.auth-secondary-btn:hover {
+  transform: translateY(-2.2px) !important;
+  background-color: rgba(0, 149, 246, 0.08) !important;
+  border-color: #0095F6 !important;
+  box-shadow: 0 8px 24px -4px rgba(0, 149, 246, 0.28), 0 0 0 1px rgba(0, 149, 246, 0.2) !important;
+  color: #0095F6 !important;
+  letter-spacing: 0.01em;
+}
+
+.dark .auth-secondary-btn:hover {
+  background-color: rgba(0, 149, 246, 0.16) !important;
+  box-shadow: 0 8px 26px -4px rgba(0, 149, 246, 0.42), 0 0 0 1px rgba(0, 149, 246, 0.32) !important;
+}
+
+.auth-secondary-btn:active {
+  transform: translateY(0.5px) scale(0.988) !important;
+  box-shadow: 0 2px 8px rgba(0, 149, 246, 0.15) !important;
+  transition-duration: 0.08s !important;
+}
+
+/* 3. Google Social Auth Button */
+.auth-google-btn {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  will-change: transform, box-shadow, border-color, background-color;
+}
+
+.auth-google-btn svg {
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  will-change: transform;
+}
+
+.auth-google-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(99, 102, 241, 0.22) !important;
+  border-color: rgba(99, 102, 241, 0.38) !important;
+}
+
+.dark .auth-google-btn:hover {
+  background-color: #242E3D !important;
+  box-shadow: 0 8px 26px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.45) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+}
+
+.auth-google-btn:hover svg {
+  transform: scale(1.18) rotate(-6deg);
+}
+
+.auth-google-btn:active {
+  transform: translateY(0.5px) scale(0.988) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  transition-duration: 0.08s !important;
+}
+
+/* 4. Text Links (Forgot Password & OTP Link) */
+.auth-forgot-link {
+  position: relative;
+  display: inline-block;
+  transition: color 0.2s ease, transform 0.2s ease !important;
+}
+
+.auth-forgot-link:hover {
+  transform: translateY(-1px);
+  color: #0095F6 !important;
+}
+
+.auth-otp-link {
+  position: relative;
+  display: inline-block;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  border-radius: 6px;
+}
+
+.auth-otp-link:hover {
+  transform: translateY(-1.5px) scale(1.02);
+  color: #4F46E5 !important;
+  text-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
+
+.dark .auth-otp-link:hover {
+  color: #C7D2FE !important;
+  text-shadow: 0 0 14px rgba(165, 180, 252, 0.45);
+}
+
+.auth-otp-link:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* 5. Input Fields Focus Polish */
+.auth-input-field {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+.auth-input-field:focus {
+  border-color: #0095F6 !important;
+  box-shadow: 0 0 0 3.5px rgba(0, 149, 246, 0.16) !important;
+}
+
+/* 6. Theme Switcher Micro-Interaction */
+.auth-theme-toggle {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.auth-theme-toggle svg {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auth-theme-toggle:hover {
+  transform: translateY(-2px) scale(1.04) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1) !important;
+}
+
+.auth-theme-toggle:hover svg {
+  transform: rotate(25deg) scale(1.14);
+}
+
+.auth-theme-toggle:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* 7. Brand Logo Micro-Bounce */
+.auth-brand-badge {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.35s ease !important;
+}
+
+.auth-brand-badge:hover {
+  transform: translateY(-2px) scale(1.06) rotate(-2deg);
+  filter: drop-shadow(0 8px 22px rgba(236, 72, 153, 0.55)) !important;
+}
+
+/* 8. Password Show/Hide Toggle */
+.auth-showhide-toggle {
+  transition: color 0.18s ease, transform 0.18s ease !important;
+}
+
+.auth-showhide-toggle:hover {
+  color: #0095F6 !important;
+  transform: translateY(-50%) scale(1.08) !important;
+}
+
+/* ==========================================================================
    Left Navigation Sidebar (Instagram-Style Symmetrical & Seamless Feed Color)
    ========================================================================== */
 

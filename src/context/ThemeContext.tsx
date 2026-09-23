@@ -12,14 +12,31 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+/**
+ * Reads the saved theme from localStorage.
+ * Falls back to 'light' if nothing is saved yet.
+ * Never reads from prefers-color-scheme so the user's explicit choice is always honoured.
+ */
+function getSavedTheme(): Theme {
+  if (typeof window === 'undefined') return 'light';
+  try {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch {
+    // ignore
+  }
+  return 'light'; // explicit default: always start in light mode
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  // Initialise synchronously from localStorage so there is no flash
+  const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
-    const active = (document.documentElement.getAttribute('data-theme') as Theme) || 'dark';
-    queueMicrotask(() => {
-      setThemeState(active);
-    });
+    const saved = getSavedTheme();
+    // Apply to <html data-theme> and React state in one go
+    document.documentElement.setAttribute('data-theme', saved);
+    setThemeState(saved);
   }, []);
 
   const setTheme = (nextTheme: Theme) => {
@@ -33,8 +50,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (

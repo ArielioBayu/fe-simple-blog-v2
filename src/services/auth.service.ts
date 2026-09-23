@@ -1,4 +1,4 @@
-import { apiFetch, setCookie, deleteCookie } from '@/lib/api';
+import { apiFetch, setCookie, deleteCookie, ApiError } from '@/lib/api';
 import {
   LoginRequest,
   LoginResponseData,
@@ -6,6 +6,8 @@ import {
   UserProfile,
   UpdateProfileRequest,
   ApiResponse,
+  VerifyOtpRequest,
+  ResendOtpRequest,
 } from '@/types';
 
 export const authService = {
@@ -20,11 +22,15 @@ export const authService = {
         method: 'POST',
         body: data,
       });
-    } catch {
-      res = await apiFetch<LoginResponseData>('/memberships/sign-in', {
-        method: 'POST',
-        body: data,
-      });
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 404) {
+        res = await apiFetch<LoginResponseData>('/memberships/sign-in', {
+          method: 'POST',
+          body: data,
+        });
+      } else {
+        throw err;
+      }
     }
 
     const tokens = res.data;
@@ -57,16 +63,59 @@ export const authService = {
         method: 'POST',
         body: data,
       });
-    } catch {
-      return await apiFetch<void>('/memberships/sign-up', {
-        method: 'POST',
-        body: data,
-      });
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 404) {
+        return await apiFetch<void>('/memberships/sign-up', {
+          method: 'POST',
+          body: data,
+        });
+      }
+      throw err;
     }
   },
 
   async register(data: SignUpRequest): Promise<ApiResponse<void>> {
     return await this.signUp(data);
+  },
+
+  /**
+   * Verifies user OTP: POST /auth/verify-otp
+   */
+  async verifyOtp(data: VerifyOtpRequest): Promise<ApiResponse<void>> {
+    try {
+      return await apiFetch<void>('/auth/verify-otp', {
+        method: 'POST',
+        body: data,
+      });
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 404) {
+        return await apiFetch<void>('/memberships/verify-otp', {
+          method: 'POST',
+          body: data,
+        });
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Resends OTP code to email: POST /auth/resend-otp
+   */
+  async resendOtp(data: ResendOtpRequest): Promise<ApiResponse<void>> {
+    try {
+      return await apiFetch<void>('/auth/resend-otp', {
+        method: 'POST',
+        body: data,
+      });
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 404) {
+        return await apiFetch<void>('/memberships/resend-otp', {
+          method: 'POST',
+          body: data,
+        });
+      }
+      throw err;
+    }
   },
 
   /**

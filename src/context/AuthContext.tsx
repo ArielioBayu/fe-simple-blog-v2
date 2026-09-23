@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { authService } from '@/services';
 import { UserProfile, LoginRequest, UpdateProfileRequest } from '@/types';
 
+import { getCookie } from '@/lib/api';
+
 interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<void>;  
   logout: () => void;
   refreshProfile: () => Promise<void>;
   updateProfile: (data: UpdateProfileRequest) => Promise<UserProfile>;
@@ -23,24 +25,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const refreshProfile = async () => {
-    const profile = await authService.getUserProfile();
-    if (profile) {
-      setUser(profile);
-      try {
-        localStorage.setItem('username', profile.username);
-      } catch {
-        // ignore
+    try {
+      const profile = await authService.getUserProfile();
+      if (profile) {
+        setUser(profile);
+        try {
+          localStorage.setItem('username', profile.username);
+        } catch {
+          // ignore
+        }
+      } else {
+        setUser(null);
       }
-    } else {
-      const storedName = typeof window !== 'undefined' ? localStorage.getItem('username') : null;
-      if (storedName) {
-        setUser({
-          id: 0,
-          username: storedName,
-          email: `${storedName}@example.com`,
-          created_at: new Date().toISOString(),
-        });
-      }
+    } catch {
+      setUser(null);
     }
   };
 
@@ -49,25 +47,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initAuth() {
       try {
+        const hasRefreshToken = typeof window !== 'undefined' && !!localStorage.getItem('refresh_token');
+        const hasAccessToken = typeof window !== 'undefined' && !!getCookie('access_token');
+
+        // If no tokens exist at all, user is definitely unauthenticated
+        if (!hasRefreshToken && !hasAccessToken) {
+          if (!ignore) {
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        // Validate session with backend
         const profile = await authService.getUserProfile();
         if (!ignore) {
           if (profile) {
             setUser(profile);
-            localStorage.setItem('username', profile.username);
-          } else {
-            const storedName = localStorage.getItem('username');
-            if (storedName) {
-              setUser({
-                id: 0,
-                username: storedName,
-                email: `${storedName}@example.com`,
-                created_at: new Date().toISOString(),
-              });
+            try {
+              localStorage.setItem('username', profile.username);
+            } catch {
+              // ignore
             }
+          } else {
+            // Sesi kedaluwarsa atau token tidak valid -> bersihkan sesi & redirect
+            setUser(null);
+            authService.logout();
           }
         }
       } catch {
-        // ignore
+        if (!ignore) {
+          setUser(null);
+          authService.logout();
+        }
       } finally {
         if (!ignore) {
           setIsLoading(false);
@@ -112,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     authService.logout();
     setUser(null);
-    router.push('/login');
+    router.replace('/login');
   };
 
   return (

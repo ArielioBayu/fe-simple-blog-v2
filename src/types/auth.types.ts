@@ -14,6 +14,20 @@ export interface LoginResponseData {
   refresh_token: string;
 }
 
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpRequest {
+  email: string;
+}
+
+export interface OtpResponse {
+  status: number;
+  message: string;
+}
+
 export interface UserStats {
   stories_count: number;
   saved_count: number;
