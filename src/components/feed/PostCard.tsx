@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Post } from '@/types';
 import { postService, uploadService } from '@/services';
+import { PostMenuDropdown } from '@/components/common';
 
 interface PostCardProps {
   post: Post;
@@ -30,8 +31,14 @@ export function PostCard({
   currentUserId,
   onDeletePost,
 }: PostCardProps) {
+  const isAuthor = Boolean(currentUserId && post.user_id && currentUserId === post.user_id);
   const [likeCount, setLikeCount] = useState<number | null>(null);
   const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [post.avatar_url]);
 
   // Fetch real-time like count and comment count from BE Modul 7 endpoints
   useEffect(() => {
@@ -87,6 +94,7 @@ export function PostCard({
     }
   };
 
+  const authorAvatarSrc = post.avatar_url && !avatarError ? uploadService.getImageUrl(post.avatar_url) : null;
   const imagePath = post.file_path || post.filepath;
   const directImageUrl = imagePath ? uploadService.getImageUrl(imagePath) : null;
   const imageMatch = post.post_content.match(/!\[.*?\]\((.*?)\)/);
@@ -118,9 +126,19 @@ export function PostCard({
         >
           <div className="story-avatar-wrap" style={{ width: '40px', height: '40px' }}>
             <div className="story-avatar-inner">
-              <span style={styles.authorLetter}>
-                {post.username ? post.username.substring(0, 2).toUpperCase() : 'U'}
-              </span>
+              {authorAvatarSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={authorAvatarSrc}
+                  alt={post.username}
+                  onError={() => setAvatarError(true)}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <span style={styles.authorLetter}>
+                  {post.username ? post.username.substring(0, 2).toUpperCase() : 'U'}
+                </span>
+              )}
             </div>
           </div>
           <div style={styles.authorMeta}>
@@ -131,47 +149,14 @@ export function PostCard({
           </div>
         </div>
 
-        {/* Actions in header: Delete & Share */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {onDeletePost && (
-            <button
-              onClick={() => {
-                if (window.confirm('Apakah Anda yakin ingin menghapus cerita ini?')) {
-                  onDeletePost(post.id);
-                }
-              }}
-              style={{
-                ...styles.headerActionBtn,
-                color: '#EF4444',
-              }}
-              title="Hapus Cerita"
-              aria-label="Hapus Cerita"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-            </button>
-          )}
-
-          {/* Share Button */}
-          <button
-            onClick={() => onShare(post.id, post.post_title)}
-            style={styles.headerActionBtn}
-            title="Bagikan Cerita"
-            aria-label="Bagikan Cerita"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-          </button>
-        </div>
+        {/* Actions in header: Three dots menu (Simpan ke favorit, Bagikan, Hapus) */}
+        <PostMenuDropdown
+          isSaved={isSaved}
+          isAuthor={isAuthor}
+          onBookmarkToggle={() => onBookmarkToggle(post.id)}
+          onShare={() => onShare(post.id, post.post_title)}
+          onDeletePost={onDeletePost ? () => onDeletePost(post.id) : undefined}
+        />
       </div>
 
       {/* Post Title */}

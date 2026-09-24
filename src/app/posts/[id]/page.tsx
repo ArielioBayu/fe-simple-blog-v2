@@ -61,7 +61,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           if (postRes.status === 'fulfilled' && postRes.value?.data) {
             setPostData(postRes.value.data);
           } else {
-            setError('Post details not found.');
+            setError('Cerita ini tidak ditemukan atau mungkin telah dihapus.');
           }
 
           if (likeRes.status === 'fulfilled' && likeRes.value?.data?.like_count !== undefined) {
@@ -73,7 +73,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         }
       } catch (err: unknown) {
         if (!ignore) {
-          setError(err instanceof Error ? err.message : 'Failed to load post.');
+          setError(err instanceof Error ? err.message : 'Gagal memuat cerita. Silakan refresh halaman.');
         }
       } finally {
         if (!ignore) {
@@ -151,7 +151,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         },
         liked_count: postData.liked_count,
       });
-      showToast('Failed to update like status.');
+      showToast('Gagal mengubah status suka. Silakan coba lagi.');
     }
   };
 
@@ -164,9 +164,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       const next = isSaved ? ids.filter(id => id !== numId) : [...ids, numId];
       localStorage.setItem('saved_posts', JSON.stringify(next));
       setIsSaved(!isSaved);
-      showToast(isSaved ? 'Removed from saved collection' : 'Saved to your collection');
+      showToast(isSaved ? 'Dihapus dari koleksi tersimpan' : 'Disimpan ke koleksi Anda');
     } catch {
-      showToast('Failed to update bookmark');
+      showToast('Gagal menyimpan. Silakan coba lagi.');
     }
   };
 
@@ -174,7 +174,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     if (typeof window !== 'undefined' && navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(window.location.href);
-        showToast('Link copied to clipboard!');
+        showToast('Link berhasil disalin ke clipboard!');
         return;
       } catch {
         // ignore
@@ -186,7 +186,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const handleDeletePost = async () => {
     try {
       await postService.deletePost(postId);
-      showToast('Cerita berhasil dihapus.');
+      showToast('Postingan berhasil dihapus.');
       setTimeout(() => {
         router.push('/');
       }, 700);
@@ -201,11 +201,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
     try {
       await commentService.createComment(postId, content);
-      showToast('Comment posted!');
+      showToast('Komentar berhasil dikirim!');
       setCommentCount(prev => (prev !== null ? prev + 1 : 1));
       await refreshPost();
     } catch (err: unknown) {
-      setCommentError(err instanceof Error ? err.message : 'Failed to post comment.');
+      setCommentError(err instanceof Error ? err.message : 'Gagal mengirim komentar. Silakan coba lagi.');
     } finally {
       setCommentLoading(false);
     }

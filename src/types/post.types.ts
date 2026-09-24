@@ -1,9 +1,10 @@
-﻿import { Comment } from './comment.types';
+import { Comment } from './comment.types';
 
 export interface Post {
   id: number;
   user_id: number;
   username: string;
+  avatar_url?: string;
   post_title: string;
   post_content: string;
   post_hashtags: string[];
@@ -20,6 +21,7 @@ export interface PostDetail {
   id: number;
   user_id: number;
   username: string;
+  avatar_url?: string;
   post_title: string;
   post_content: string;
   post_hashtags: string[];

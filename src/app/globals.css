@@ -309,6 +309,39 @@ button, .btn {
   border-color: var(--border-hover);
 }
 
+/* Post Action Three-Dots Menu */
+.post-menu-trigger-btn {
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent;
+}
+
+.post-menu-item-btn {
+  padding: 10px 14px !important;
+  margin: 0 !important;
+  gap: 0 !important;
+  width: 100% !important;
+  border-radius: 8px !important;
+  font-family: inherit !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  box-shadow: none !important;
+  display: block !important;
+  text-align: left !important;
+}
+
 .btn-icon {
   width: 40px;
   height: 40px;
@@ -327,6 +360,16 @@ button, .btn {
 .btn-icon:hover {
   background: var(--btn-secondary-hover);
   transform: scale(1.08);
+}
+
+/* Accessibility Focus Rings (WCAG AA Compliant) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--social-blue, #0095F6);
+  outline-offset: 2px;
 }
 
 /* Instagram Story Ring */
@@ -782,24 +825,24 @@ button, .btn {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 72px;
-  background-color: var(--bg-main); /* Sama persis dengan warna background halaman feed */
+  width: 76px;
+  background-color: var(--bg-main); /* Match feed background */
   border-right: 1px solid var(--border);
   z-index: 920;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 28px 12px 24px;
+  padding: 24px 14px 20px;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
-  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: width 0.32s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.32s cubic-bezier(0.25, 1, 0.5, 1);
   will-change: width, box-shadow;
 }
 
 .left-nav-sidebar:hover {
-  width: 220px;
-  box-shadow: 10px 0 30px -4px rgba(0, 0, 0, 0.22);
+  width: 230px;
+  box-shadow: 12px 0 36px -4px rgba(0, 0, 0, 0.25);
 }
 
 /* Menu Container - Centered to the marked middle area */
@@ -807,7 +850,7 @@ button, .btn {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 14px;
+  gap: 12px;
   flex: 1;
 }
 
@@ -815,10 +858,10 @@ button, .btn {
 .left-nav-item {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
   height: 48px;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 0 2px;
   box-sizing: border-box;
   border: none;
@@ -828,12 +871,13 @@ button, .btn {
   text-align: left;
   font-family: var(--font-sans);
   position: relative;
-  transition: background-color 0.18s ease, color 0.18s ease;
+  transition: background-color 0.2s ease, color 0.18s ease, transform 0.18s ease;
   user-select: none;
 }
 
 .left-nav-item:hover {
   background-color: var(--btn-secondary-hover);
+  transform: translateX(2px);
 }
 
 .left-nav-item:active {
@@ -847,7 +891,7 @@ button, .btn {
 }
 
 .left-nav-item.active .left-nav-svg {
-  stroke-width: 2.5;
+  stroke-width: 2.4;
   color: var(--heading-color);
 }
 
@@ -865,61 +909,73 @@ button, .btn {
 }
 
 .left-nav-svg {
-  transition: transform 0.18s ease;
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .left-nav-item:hover .left-nav-svg {
-  transform: scale(1.06);
+  transform: scale(1.08);
 }
 
 /* Red Badges */
 .left-nav-badge {
   position: absolute;
-  top: 3px;
-  right: 2px;
-  background: #FF3040;
+  top: 4px;
+  right: 4px;
+  background: #EF4444;
   color: #FFFFFF;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   min-width: 17px;
   height: 17px;
-  line-height: 17px;
   border-radius: 999px;
-  text-align: center;
-  padding: 0 4px;
-  box-shadow: 0 2px 6px rgba(255, 48, 64, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3.5px;
+  box-sizing: border-box;
+  border: 2px solid var(--bg-main);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .left-nav-dot {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 7px;
-  height: 7px;
-  background: #FF3040;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: #EF4444;
   border-radius: 50%;
   border: 2px solid var(--bg-main);
-  box-shadow: 0 0 6px rgba(255, 48, 64, 0.65);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* Avatar Ring */
 .left-nav-avatar-ring {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
   border-radius: 50%;
-  padding: 2px;
+  padding: 1.5px;
   border: 2px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  box-sizing: border-box;
   transition: border-color 0.18s ease, transform 0.18s ease;
 }
 
 .left-nav-item:hover .left-nav-avatar-ring,
 .left-nav-avatar-ring.active-ring {
   border-color: var(--heading-color);
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .left-nav-avatar-img {
@@ -930,9 +986,10 @@ button, .btn {
 }
 
 .left-nav-avatar-initial {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--heading-color);
+  line-height: 1;
 }
 
 /* Symmetrical Text Label */
@@ -942,8 +999,10 @@ button, .btn {
   text-overflow: ellipsis;
   font-size: 0.95rem;
   font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(-6px);
   max-width: 0;
   pointer-events: none;
   visibility: hidden;
@@ -956,7 +1015,7 @@ button, .btn {
   max-width: 145px;
   pointer-events: auto;
   visibility: visible;
-  transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1) 0.05s, transform 0.25s cubic-bezier(0.25, 1, 0.5, 1) 0.05s, max-width 0.28s ease;
+  transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1) 0.04s, transform 0.25s cubic-bezier(0.25, 1, 0.5, 1) 0.04s, max-width 0.28s ease;
 }
 
 /* Footer & Popover */

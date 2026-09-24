@@ -92,7 +92,7 @@ export default function FeedPage() {
         }
       } catch (err: unknown) {
         if (!ignore) {
-          setError(err instanceof Error ? err.message : 'Failed to load posts.');
+          setError(err instanceof Error ? err.message : 'Gagal memuat cerita. Silakan refresh halaman.');
         }
       } finally {
         if (!ignore) {
@@ -121,7 +121,7 @@ export default function FeedPage() {
         setHasMore(false);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load posts.');
+      setError(err instanceof Error ? err.message : 'Gagal memuat cerita. Silakan refresh halaman.');
     } finally {
       setLoading(false);
     }
@@ -157,7 +157,7 @@ export default function FeedPage() {
       } catch {
         // ignore
       }
-      showToast(isSaved ? 'Removed from saved collection' : 'Saved to your collection');
+      showToast(isSaved ? 'Dihapus dari koleksi tersimpan' : 'Disimpan ke koleksi Anda');
       return next;
     });
   };
@@ -166,7 +166,7 @@ export default function FeedPage() {
     try {
       await postService.deletePost(postId);
       setPosts(prev => prev.filter(p => p.id !== postId));
-      showToast('Cerita berhasil dihapus.');
+      showToast('Postingan berhasil dihapus.');
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Gagal menghapus cerita.');
     }
@@ -177,18 +177,18 @@ export default function FeedPage() {
     if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(url);
-        showToast('Link copied to clipboard!');
+        showToast('Link berhasil disalin ke clipboard!');
         return;
       } catch {
         // ignore
       }
     }
-    showToast(`Shared: ${postTitle}`);
+    showToast(`Cerita "${postTitle}" siap dibagikan!`);
   };
 
   const handleCreatePost = async (data: CreatePostRequest) => {
     await postService.createPost(data);
-    showToast('Story published successfully!');
+    showToast('Cerita berhasil dipublikasikan!');
     setPage(1);
     await refetchFirstPage();
   };

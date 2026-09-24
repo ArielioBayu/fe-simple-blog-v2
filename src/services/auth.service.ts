@@ -24,10 +24,25 @@ export const authService = {
       });
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 404) {
-        res = await apiFetch<LoginResponseData>('/memberships/sign-in', {
-          method: 'POST',
-          body: data,
-        });
+        const backendMsg: string = (err.data as { message?: string })?.message || err.message || '';
+        const isRouteMissing =
+          backendMsg === '' ||
+          backendMsg.toLowerCase().includes('route') ||
+          backendMsg.toLowerCase().includes('endpoint') ||
+          backendMsg.toLowerCase().includes('not found') === false;
+
+        if (isRouteMissing) {
+          res = await apiFetch<LoginResponseData>('/memberships/sign-in', {
+            method: 'POST',
+            body: data,
+          });
+        } else {
+          throw new ApiError(
+            'Akun dengan email atau username ini tidak ditemukan. Silakan daftar terlebih dahulu.',
+            404,
+            err.data
+          );
+        }
       } else {
         throw err;
       }

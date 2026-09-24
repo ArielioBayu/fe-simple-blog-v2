@@ -124,20 +124,31 @@ export default function LoginPage() {
     try {
       await login({ email, password });
     } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      const rawMsg = err instanceof Error ? err.message : '';
+
       const isUnverified =
-        (err as { status?: number })?.status === 403 ||
-        (err instanceof Error && (
-          err.message.toLowerCase().includes('not verified') ||
-          err.message.toLowerCase().includes('verify your email')
-        ));
+        status === 403 ||
+        rawMsg.toLowerCase().includes('not verified') ||
+        rawMsg.toLowerCase().includes('verify your email');
 
       if (isUnverified) {
         setOtpEmail(email);
         setShowOtpModal(true);
         setError('Akun Anda belum diverifikasi. Masukkan 6 digit kode OTP yang telah dikirimkan ke email Anda.');
+      } else if (status === 404 || rawMsg.toLowerCase().includes('tidak ditemukan')) {
+        setError('Akun dengan email atau username ini tidak ditemukan. Silakan daftar terlebih dahulu.');
+      } else if (status === 401 || rawMsg.toLowerCase().includes('password') || rawMsg.toLowerCase().includes('invalid')) {
+        setError('Email atau kata sandi yang Anda masukkan salah. Silakan periksa kembali dan coba lagi.');
+      } else if (status === 429) {
+        setError('Terlalu banyak percobaan login. Silakan tunggu beberapa menit sebelum mencoba lagi.');
+      } else if (status === 500 || status === 502 || status === 503) {
+        setError('Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.');
+      } else if (!navigator.onLine) {
+        setError('Tidak ada koneksi internet. Periksa jaringan Anda dan coba lagi.');
       } else {
-        const msg = err instanceof Error ? err.message : 'Login gagal. Periksa kembali nomor ponsel, nama pengguna, atau kata sandi Anda.';
-        setError(msg);
+        // Use the already-friendly message from api.ts, or a generic fallback
+        setError(rawMsg || 'Login gagal. Periksa kembali email dan kata sandi Anda.');
       }
       setSubmitting(false);
     }
@@ -354,7 +365,7 @@ export default function LoginPage() {
                 <input
                   id="login-identifier"
                   type="text"
-                  placeholder="Nomor ponsel, nama pengguna, atau email"
+                  placeholder="Username atau Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="auth-input-field"
@@ -375,7 +386,7 @@ export default function LoginPage() {
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Kata sandi"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="auth-input-field"

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth } from '@/context';
+import { useAuth, useTheme } from '@/context';
 import { CreatePostRequest, UploadFileResponseData } from '@/types';
 import { uploadService } from '@/services';
 
@@ -14,6 +14,8 @@ interface CreatePostModalProps {
 
 export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalProps) {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const username = user?.username || 'Creator';
 
   const [title, setTitle] = useState('');
@@ -25,6 +27,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [animateOut, setAnimateOut] = useState(false);
 
   // My Media Gallery State (GET /upload/my-media)
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -39,6 +42,15 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
     });
   }, []);
 
+  const handleClose = () => {
+    if (loading || uploadingImage) return;
+    setAnimateOut(true);
+    setTimeout(() => {
+      setAnimateOut(false);
+      onClose();
+    }, 280);
+  };
+
   // Lock body scroll and handle Escape key while modal is open
   useEffect(() => {
     if (!isOpen) return;
@@ -47,8 +59,8 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
+      if (e.key === 'Escape' && !loading && !uploadingImage) {
+        handleClose();
       }
     };
 
@@ -58,9 +70,9 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, loading, uploadingImage]);
 
-  if (!isOpen || !mounted) return null;
+  if ((!isOpen && !animateOut) || !mounted) return null;
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,7 +154,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
       setHashtags('');
       setAttachedImagePath(null);
       setAttachedUploadId(null);
-      onClose();
+      handleClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to publish story');
     } finally {
@@ -152,7 +164,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleClose();
     }
   };
 
@@ -161,13 +173,119 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   const modalNode = (
     <div
       style={styles.modalOverlay}
-      className="animate-fade-in"
+      className={`create-modal-backdrop ${animateOut ? 'out' : ''}`}
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-modal-title"
     >
-      <div style={styles.modalContent} className="glass animate-slide-up">
+      <style>{`
+        @keyframes createBackdropFadeIn {
+          from {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+          }
+          to {
+            opacity: 1;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+          }
+        }
+        @keyframes createBackdropFadeOut {
+          from {
+            opacity: 1;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+          }
+          to {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+          }
+        }
+        @keyframes createModalSpringIn {
+          0% {
+            opacity: 0;
+            transform: translateY(32px) scale(0.93);
+          }
+          65% {
+            opacity: 1;
+            transform: translateY(-4px) scale(1.015);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        @keyframes createModalSpringOut {
+          0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(22px) scale(0.94);
+          }
+        }
+
+        .create-modal-backdrop {
+          animation: createBackdropFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .create-modal-backdrop.out {
+          animation: createBackdropFadeOut 0.26s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .create-modal-card {
+          animation: createModalSpringIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .create-modal-card.out {
+          animation: createModalSpringOut 0.26s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .create-close-btn {
+          transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                      background-color 0.2s ease,
+                      color 0.2s ease,
+                      box-shadow 0.2s ease,
+                      border-color 0.2s ease !important;
+        }
+        .create-close-btn:hover {
+          transform: rotate(90deg) scale(1.1) !important;
+          background-color: rgba(239, 68, 68, 0.12) !important;
+          color: #EF4444 !important;
+          border-color: rgba(239, 68, 68, 0.3) !important;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
+        }
+        .create-close-btn:active {
+          transform: rotate(90deg) scale(0.92) !important;
+        }
+
+        .create-btn-primary {
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                      box-shadow 0.22s ease,
+                      filter 0.2s ease !important;
+        }
+        .create-btn-primary:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.02) !important;
+          box-shadow: 0 8px 24px rgba(244, 63, 94, 0.45) !important;
+          filter: brightness(1.05);
+        }
+        .create-btn-primary:active:not(:disabled) {
+          transform: translateY(0.5px) scale(0.98) !important;
+        }
+
+        .create-btn-cancel {
+          transition: all 0.2s ease !important;
+        }
+        .create-btn-cancel:hover:not(:disabled) {
+          transform: translateY(-1.5px) !important;
+        }
+      `}</style>
+      <div
+        style={styles.modalContent}
+        className={`glass create-modal-card ${animateOut ? 'out' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
         <div style={styles.modalHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -188,7 +306,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
               </div>
             </div>
             <div>
-              <h3 id="create-modal-title" style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--heading-color)' }}>
+              <h3 id="create-modal-title" style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--heading-color)', fontFamily: 'var(--font-outfit)' }}>
                 Create New Story
               </h3>
               <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
@@ -197,8 +315,40 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             </div>
           </div>
 
-          <button style={styles.closeBtn} onClick={onClose} aria-label="Close modal">
-            &times;
+          <button
+            type="button"
+            className="create-close-btn"
+            onClick={handleClose}
+            aria-label="Tutup modal"
+            title="Tutup (Esc)"
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--btn-secondary-bg, rgba(255, 255, 255, 0.08))',
+              border: '1px solid var(--border, rgba(255, 255, 255, 0.12))',
+              color: 'var(--fg-muted)',
+              cursor: 'pointer',
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
 
@@ -252,7 +402,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
           {showMediaGallery && (
             <div style={styles.galleryContainer}>
               <div style={styles.galleryHeader}>
-                <span style={styles.galleryTitle}>Pilih dari Galeri Unggahan Saya</span>
+                <span style={styles.galleryTitle}>Open From Galery</span>
                 <button
                   type="button"
                   style={styles.galleryCloseBtn}
@@ -374,15 +524,15 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
 
             <button
               type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
+              className="btn btn-secondary create-btn-cancel"
+              onClick={handleClose}
               disabled={loading}
             >
               Batal
             </button>
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary create-btn-primary"
               disabled={loading || uploadingImage || !title.trim() || !content.trim()}
             >
               {loading ? 'Mempublikasikan...' : 'Bagikan Cerita'}

@@ -1,10 +1,9 @@
+import { getFriendlyErrorMessage, isNetworkError, NETWORK_ERROR_MESSAGE } from './errors';
+export { getFriendlyErrorMessage, HTTP_ERROR_MESSAGES, isNetworkError, NETWORK_ERROR_MESSAGE } from './errors';
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (API_BASE_URL + '/api/v1');
 
-/**
- * Resolves a backend relative media file path (e.g., "uploads/xxx.jpg")
- * to a fully qualified browser image URL.
- */
 export function getMediaUrl(filePath?: string | null): string | null {
   if (!filePath || typeof filePath !== 'string') return null;
   const trimmed = filePath.trim();
@@ -74,154 +73,7 @@ export function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-function subscribeTokenRefresh(cb: (token: string) => void) {
-  refreshSubscribers.push(cb);
-}
-
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
-}
-
-export async function apiFetch<T = unknown>(path: string, options: FetchOptions = {}): Promise<ApiResponse<T>> {
-  const url = `${BASE_URL}${path}`;
-
-  // Build headers
-  const headers = new Headers(options.headers || {});
-  if (options.body && !(options.body instanceof FormData)) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  // Dual-auth support: Attach Bearer token from cookie if not already set
-  const token = getCookie('access_token');
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const { body, ...restOptions } = options;
-  const fetchConfig: RequestInit = {
-    ...restOptions,
-    headers,
-    credentials: 'include', // Vital for HttpOnly and Lax cookies
-  };
-
-  if (body !== undefined && body !== null) {
-    if (body instanceof FormData || typeof body === 'string' || body instanceof Blob || body instanceof ArrayBuffer) {
-      fetchConfig.body = body as BodyInit;
-    } else {
-      fetchConfig.body = JSON.stringify(body);
-    }
-  }
-
-  try {
-    const response = await fetch(url, fetchConfig);
-
-    // If 401 and we are not trying to log in or refresh token or logout
-    if (
-      response.status === 401 &&
-      !path.includes('/sign-in') &&
-      !path.includes('/sign-up') &&
-      !path.includes('/refresh') &&
-      !path.includes('/sign-out')
-    ) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          isRefreshing = false;
-          logoutRedirect();
-          throw new Error('Unauthorized');
-        }
-
-        try {
-          let refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({ token: refreshToken }),
-          });
-
-          if (!refreshRes.ok) {
-            // Legacy fallback
-            refreshRes = await fetch(`${BASE_URL}/memberships/refresh`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({ token: refreshToken }),
-            });
-          }
-
-          if (!refreshRes.ok) {
-            throw new Error('Refresh failed');
-          }
-
-          const refreshData = await refreshRes.json();
-          // Extract token from standardized envelope or direct property
-          const newAccessToken = refreshData.data?.access_token || refreshData.access_token;
-          
-          if (!newAccessToken) {
-            throw new Error('Invalid refresh response');
-          }
-
-          // Save new token in cookie (24 hours)
-          setCookie('access_token', newAccessToken, 86400);
-          
-          isRefreshing = false;
-          onRefreshed(newAccessToken);
-        } catch (refreshErr) {
-          isRefreshing = false;
-          localStorage.removeItem('refresh_token');
-          deleteCookie('access_token');
-          logoutRedirect();
-          throw refreshErr;
-        }
-      }
-
-      // Wait for refresh to complete, then retry
-      return new Promise((resolve, reject) => {
-        subscribeTokenRefresh(async (newToken: string) => {
-          try {
-            headers.set('Authorization', `Bearer ${newToken}`);
-            const retryRes = await fetch(url, fetchConfig);
-            if (!retryRes.ok) {
-              const errData = await retryRes.json().catch(() => ({}));
-              reject(new Error(errData.message || 'Request failed after refresh'));
-            } else {
-              resolve(await retryRes.json());
-            }
-          } catch (retryErr: unknown) {
-            reject(retryErr instanceof Error ? retryErr : new Error(String(retryErr)));
-          }
-        });
-      });
-    }
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new ApiError(errData.message || `Request failed with status ${response.status}`, response.status, errData);
-    }
-
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return await response.json();
-    }
-    return { status: response.status, message: 'success' };
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      throw err;
-    }
-    throw new Error(String(err));
-  }
-}
-
-export function isTokenExpired(token: string | null): boolean {
+export function isTokenExpired(token: string | null, bufferSeconds = 10): boolean {
   if (!token) return true;
   try {
     const parts = token.split('.');
@@ -236,18 +88,214 @@ export function isTokenExpired(token: string | null): boolean {
     );
     const decoded = JSON.parse(jsonPayload);
     if (!decoded.exp) return false;
-    // Buffer of 30 seconds before actual expiration
-    return Date.now() >= (decoded.exp * 1000 - 30000);
+    // Buffer of bufferSeconds (default 10s) before actual expiration to prevent race conditions
+    return Date.now() >= (decoded.exp * 1000 - bufferSeconds * 1000);
   } catch {
     return true;
   }
 }
 
+export function isAuthEndpoint(path: string): boolean {
+  return (
+    path.includes('/sign-in') ||
+    path.includes('/sign-up') ||
+    path.includes('/login') ||
+    path.includes('/register') ||
+    path.includes('/verify-otp') ||
+    path.includes('/resend-otp') ||
+    path.includes('/refresh') ||
+    path.includes('/sign-out') ||
+    path.includes('/logout')
+  );
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+
+  // Concurrency-safe: return existing in-flight refresh promise if already underway
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        logoutRedirect();
+        return null;
+      }
+
+      let refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token: refreshToken }),
+      });
+
+      if (!refreshRes.ok) {
+        // Fallback for legacy backend route
+        refreshRes = await fetch(`${BASE_URL}/memberships/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ token: refreshToken }),
+        });
+      }
+
+      if (!refreshRes.ok) {
+        throw new Error('Refresh token invalid or expired');
+      }
+
+      const refreshData = await refreshRes.json();
+      const newAccessToken: string | undefined =
+        refreshData.data?.access_token || refreshData.access_token;
+
+      if (!newAccessToken) {
+        throw new Error('Invalid refresh response payload');
+      }
+
+      // Save new token in cookie (24 hours)
+      setCookie('access_token', newAccessToken, 86400);
+
+      // If backend rotated refresh_token, persist it
+      const newRefreshToken: string | undefined =
+        refreshData.data?.refresh_token || refreshData.refresh_token;
+      if (newRefreshToken) {
+        localStorage.setItem('refresh_token', newRefreshToken);
+      }
+
+      return newAccessToken;
+    } catch {
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('username');
+      deleteCookie('access_token');
+      logoutRedirect();
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+export async function apiFetch<T = unknown>(path: string, options: FetchOptions = {}): Promise<ApiResponse<T>> {
+  const url = `${BASE_URL}${path}`;
+
+  const headers = new Headers(options.headers || {});
+  if (options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  // 1. Proactive Token Refresh:
+  // If not a public auth endpoint, ensure we have a valid non-expired access token before sending request
+  if (!isAuthEndpoint(path) && typeof window !== 'undefined') {
+    let currentToken = getCookie('access_token');
+    const hasRefreshToken = !!localStorage.getItem('refresh_token');
+
+    // If access token is missing or expired, but we have a refresh token, refresh it proactively
+    if (hasRefreshToken && (!currentToken || isTokenExpired(currentToken))) {
+      currentToken = await refreshAccessToken();
+    }
+
+    if (currentToken && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${currentToken}`);
+    }
+  } else {
+    const token = getCookie('access_token');
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
+  const { body, ...restOptions } = options;
+  const fetchConfig: RequestInit = {
+    ...restOptions,
+    headers,
+    credentials: 'include',
+  };
+
+  if (body !== undefined && body !== null) {
+    if (body instanceof FormData || typeof body === 'string' || body instanceof Blob || body instanceof ArrayBuffer) {
+      fetchConfig.body = body as BodyInit;
+    } else {
+      fetchConfig.body = JSON.stringify(body);
+    }
+  }
+
+  try {
+    const response = await fetch(url, fetchConfig);
+
+    // 2. Reactive 401 fallback (in case token was revoked server-side or clock skew occurred)
+    if (response.status === 401 && !isAuthEndpoint(path)) {
+      const newToken = await refreshAccessToken();
+      if (!newToken) {
+        throw new ApiError('Sesi Anda telah berakhir. Silakan masuk kembali.', 401);
+      }
+
+      headers.set('Authorization', `Bearer ${newToken}`);
+      try {
+        const retryResponse = await fetch(url, { ...fetchConfig, headers });
+        if (!retryResponse.ok) {
+          const errData = await retryResponse.json().catch(() => ({}));
+          const friendlyMsg = errData.message || getFriendlyErrorMessage(retryResponse.status);
+          throw new ApiError(friendlyMsg, retryResponse.status, errData);
+        }
+
+        const contentType = retryResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return (await retryResponse.json()) as ApiResponse<T>;
+        }
+        return { status: retryResponse.status, message: 'success' } as unknown as ApiResponse<T>;
+      } catch (retryErr: unknown) {
+        if (retryErr instanceof ApiError) throw retryErr;
+        // If retrying a stream/FormData throws a TypeError, do not let it masquerade as a network outage
+        throw new ApiError('Sesi berhasil diperbarui. Silakan ulangi tindakan Anda.', 401);
+      }
+    }
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const backendMsg: string | undefined = errData.message;
+      const friendlyMsg = backendMsg || getFriendlyErrorMessage(response.status);
+      throw new ApiError(friendlyMsg, response.status, errData);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    return { status: response.status, message: 'success' };
+  } catch (err: unknown) {
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    if (isNetworkError(err)) {
+      throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+    }
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error(String(err));
+  }
+}
+
 export function logoutRedirect() {
   if (typeof window !== 'undefined') {
-    localStorage.clear();
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('username');
     deleteCookie('access_token');
-    if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+    if (
+      window.location.pathname !== '/login' &&
+      window.location.pathname !== '/register' &&
+      window.location.pathname !== '/verify-otp'
+    ) {
       window.location.href = '/login?session=expired';
     }
   }

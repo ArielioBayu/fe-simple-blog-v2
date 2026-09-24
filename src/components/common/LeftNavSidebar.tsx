@@ -120,10 +120,21 @@ export function LeftNavSidebar({
               width="24"
               height="24"
               viewBox="0 0 24 24"
-              fill="currentColor"
+              fill={isHomeActive ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth={isHomeActive ? "0" : "2.2"}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               className="left-nav-svg"
             >
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+              {isHomeActive ? (
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+              ) : (
+                <>
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </>
+              )}
             </svg>
           </div>
           <span className="left-nav-label">Home</span>
@@ -144,13 +155,13 @@ export function LeftNavSidebar({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.1"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
               className="left-nav-svg"
             >
-              <path d="M21.5 2L10 13" />
-              <path d="M21.5 2L14.5 22L10 13L2 8.5L21.5 2Z" />
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
             {/* Red badge with counter 3 */}
             <span className="left-nav-badge">3</span>
@@ -200,7 +211,7 @@ export function LeftNavSidebar({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.1"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
               className="left-nav-svg"
@@ -362,7 +373,7 @@ export function LeftNavSidebar({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.3"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
               className="left-nav-svg"

@@ -48,6 +48,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [hasClosedOtpModal, setHasClosedOtpModal] = useState(false);
 
   // Dynamic image index: randomizes on refresh
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -65,6 +66,18 @@ export default function RegisterPage() {
     setCurrentImageIndex((prev) => (prev + 1) % DYNAMIC_HERO_IMAGES.length);
   };
 
+  const handleCloseOtpModal = () => {
+    setShowOtpModal(false);
+    // Clear registration fields as requested to prevent stale credentials
+    setUsername('');
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
+    setError('');
+    setSuccess(false);
+    setHasClosedOtpModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -74,11 +87,25 @@ export default function RegisterPage() {
     try {
       await authService.signUp({ username, email, password });
       setRegisteredEmail(email);
-      setSuccess(true);
+      setHasClosedOtpModal(false);
       setShowOtpModal(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Pendaftaran gagal. Silakan coba username atau email lain.';
-      setError(msg);
+      const status = (err as { status?: number })?.status;
+      const rawMsg = err instanceof Error ? err.message : '';
+
+      if (status === 409 || rawMsg.toLowerCase().includes('already') || rawMsg.toLowerCase().includes('terdaftar')) {
+        setError('Email atau username ini sudah terdaftar. Silakan gunakan yang lain atau coba masuk ke akun Anda.');
+      } else if (status === 400) {
+        setError(rawMsg || 'Data yang Anda masukkan tidak valid. Pastikan semua kolom terisi dengan benar.');
+      } else if (status === 429) {
+        setError('Terlalu banyak percobaan. Silakan tunggu beberapa menit sebelum mencoba lagi.');
+      } else if (status === 500 || status === 502 || status === 503) {
+        setError('Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.');
+      } else if (!navigator.onLine) {
+        setError('Tidak ada koneksi internet. Periksa jaringan Anda dan coba lagi.');
+      } else {
+        setError(rawMsg || 'Pendaftaran gagal. Silakan coba username atau email lain.');
+      }
     } finally {
       setLoading(false);
     }
@@ -250,6 +277,75 @@ export default function RegisterPage() {
               }}>
                 Daftar untuk melihat foto dan cerita dari teman-teman Anda.
               </p>
+
+              {/* Action Banner: Muncul khusus saat modal OTP ditutup tanpa sengaja */}
+              {hasClosedOtpModal && registeredEmail && (
+                <div
+                  className="pending-otp-banner"
+                  style={{
+                    ...styles.pendingOtpContainer,
+                    backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(238, 242, 255, 0.95)',
+                    borderColor: isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(199, 210, 254, 0.9)',
+                  }}
+                >
+                  <div style={styles.pendingOtpHeader}>
+                    <div style={{
+                      ...styles.pendingOtpIconWrapper,
+                      backgroundColor: isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.12)',
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        ...styles.pendingOtpTitle,
+                        color: isDark ? '#FFFFFF' : '#1E1B4B',
+                      }}>
+                        Verifikasi Akun Tertunda
+                      </p>
+                      <p style={{
+                        ...styles.pendingOtpDesc,
+                        color: isDark ? '#CBD5E1' : '#475569',
+                      }}>
+                        Kode OTP telah dikirim ke <strong style={{ color: isDark ? '#A5B4FC' : '#4338CA', wordBreak: 'break-all' }}>{registeredEmail}</strong>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHasClosedOtpModal(false);
+                        setRegisteredEmail('');
+                      }}
+                      title="Tutup pemberitahuan"
+                      aria-label="Tutup pemberitahuan"
+                      style={{
+                        ...styles.pendingOtpDismissBtn,
+                        color: isDark ? '#94A3B8' : '#64748B',
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <button
+                    id="reopen-otp-modal-btn"
+                    type="button"
+                    onClick={() => setShowOtpModal(true)}
+                    className="auth-primary-btn"
+                    style={styles.reopenOtpBtn}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                    </svg>
+                    <span>Verifikasi & Kirim Ulang OTP</span>
+                  </button>
+                </div>
+              )}
 
               {error && (
                 <div style={styles.errorMessage} role="alert">
@@ -433,8 +529,10 @@ export default function RegisterPage() {
       <OtpVerificationModal
         visible={showOtpModal}
         email={registeredEmail || email}
-        onClose={() => setShowOtpModal(false)}
+        onClose={handleCloseOtpModal}
         onSuccess={() => {
+          setHasClosedOtpModal(false);
+          setRegisteredEmail('');
           router.push('/login?verified=true');
         }}
       />
@@ -780,6 +878,73 @@ const styles: Record<string, React.CSSProperties> = {
   },
   copyrightLabel: {
     fontWeight: 400,
+  },
+
+  /* Pending OTP Verification Action Card */
+  pendingOtpContainer: {
+    padding: '1rem',
+    borderRadius: '12px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    marginBottom: '1.25rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+    boxShadow: '0 4px 16px -2px rgba(99, 102, 241, 0.12)',
+    animation: 'fadeIn 0.3s ease-out',
+  },
+  pendingOtpHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  pendingOtpIconWrapper: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  pendingOtpTitle: {
+    fontSize: '0.85rem',
+    fontWeight: 700,
+    margin: 0,
+    lineHeight: 1.25,
+  },
+  pendingOtpDesc: {
+    fontSize: '0.76rem',
+    margin: '3px 0 0 0',
+    lineHeight: 1.35,
+  },
+  pendingOtpDismissBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '4px',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'opacity 0.15s ease',
+  },
+  reopenOtpBtn: {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    borderRadius: '9999px',
+    background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+    color: '#FFFFFF',
+    border: 'none',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
   },
 };
 
