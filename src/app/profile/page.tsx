@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
-import { authService, postService, uploadService } from '@/services';
+import { authService, postService, uploadService, bookmarkService } from '@/services';
 import { Post, UserProfile } from '@/types';
 import { Navbar, Toast, EditProfileModal, LeftNavSidebar } from '@/components';
 
@@ -58,20 +58,27 @@ export default function ProfilePage() {
           setUserPosts(postsRes.data);
         }
 
-        // 3. Fetch saved posts from localStorage
+        // 3. Fetch saved posts from real Backend API
         try {
-          const savedIdsRaw = localStorage.getItem('saved_posts');
-          if (savedIdsRaw) {
-            const savedIds: number[] = JSON.parse(savedIdsRaw);
-            const allPostsRes = await postService.getAllPosts(1, 50);
-            if (!ignore && allPostsRes.data) {
-              const matched = allPostsRes.data.filter(p => savedIds.includes(p.id));
-              setSavedPosts(matched);
+          const savedRes = await bookmarkService.getSavedPosts(1, 50);
+          if (!ignore && savedRes.data && Array.isArray(savedRes.data)) {
+            setSavedPosts(savedRes.data);
+          } else {
+            // Fallback to localStorage if offline
+            const savedIdsRaw = localStorage.getItem('saved_posts');
+            if (savedIdsRaw) {
+              const savedIds: number[] = JSON.parse(savedIdsRaw);
+              const allPostsRes = await postService.getAllPosts(1, 50);
+              if (!ignore && allPostsRes.data) {
+                const matched = allPostsRes.data.filter(p => savedIds.includes(p.id));
+                setSavedPosts(matched);
+              }
             }
           }
         } catch {
           // ignore
         }
+
       } catch (err: unknown) {
         if (!ignore) {
           showToast(err instanceof Error ? err.message : 'Gagal memuat profil');
@@ -369,8 +376,9 @@ export default function ProfilePage() {
             ) : (
               <div style={styles.storiesGrid}>
                 {userPosts.map(post => {
-                  const cover = post.file_path || post.filepath;
+                  const cover = (post.media && post.media.length > 0) ? post.media[0].file_path : (post.file_path || post.filepath);
                   const coverUrl = cover ? uploadService.getImageUrl(cover) : null;
+                  const isMultiMedia = Boolean(post.media && post.media.length > 1);
 
                   return (
                     <Link
@@ -390,6 +398,15 @@ export default function ProfilePage() {
                         ) : (
                           <div style={styles.storyTextCover}>
                             <span style={styles.storyTextTeaser}>{post.post_title}</span>
+                          </div>
+                        )}
+
+                        {isMultiMedia && (
+                          <div style={styles.multiPhotoBadge} title="Postingan Carousel (Multi-Foto)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="8" y="2" width="14" height="14" rx="2" ry="2"></rect>
+                              <path d="M4 8H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path>
+                            </svg>
                           </div>
                         )}
 
@@ -430,8 +447,9 @@ export default function ProfilePage() {
             ) : (
               <div style={styles.storiesGrid}>
                 {savedPosts.map(post => {
-                  const cover = post.file_path || post.filepath;
+                  const cover = (post.media && post.media.length > 0) ? post.media[0].file_path : (post.file_path || post.filepath);
                   const coverUrl = cover ? uploadService.getImageUrl(cover) : null;
+                  const isMultiMedia = Boolean(post.media && post.media.length > 1);
 
                   return (
                     <Link
@@ -453,6 +471,15 @@ export default function ProfilePage() {
                             <span style={styles.storyTextTeaser}>{post.post_title}</span>
                           </div>
                         )}
+
+                        {isMultiMedia && (
+                          <div style={styles.multiPhotoBadge} title="Postingan Carousel (Multi-Foto)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="8" y="2" width="14" height="14" rx="2" ry="2"></rect>
+                              <path d="M4 8H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path>
+                            </svg>
+                          </div>
+                        )}
                       </div>
 
                       <div style={styles.storyCardInfo}>
@@ -465,6 +492,7 @@ export default function ProfilePage() {
               </div>
             )
           )}
+
         </section>
       </main>
 
@@ -786,4 +814,19 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     margin: 0,
   },
+  multiPhotoBadge: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+    borderRadius: '4px',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
 };
+

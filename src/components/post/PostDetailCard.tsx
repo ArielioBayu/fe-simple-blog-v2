@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PostDetail } from '@/types';
 import { uploadService } from '@/services';
-import { PostMenuDropdown } from '@/components/common';
+import { PostMenuDropdown, ImageCarousel } from '@/components/common';
 
 interface PostDetailCardProps {
   post: PostDetail;
@@ -62,6 +62,11 @@ export function PostDetailCard({
   const imageMatch = post.post_content.match(/!\[.*?\]\((.*?)\)/);
   const imageUrl = directImageUrl || (imageMatch ? imageMatch[1] : null);
   const rawText = imageMatch ? post.post_content.replace(imageMatch[0], '').trim() : post.post_content;
+
+  // Multi-image list from BE post_media or fallback to single cover photo
+  const mediaList = (post.media && post.media.length > 0)
+    ? post.media
+    : (imagePath ? [{ file_path: imagePath }] : (imageUrl ? [{ file_path: imageUrl }] : []));
 
   // Filter valid non-empty hashtags
   const validTags = (post.post_hashtags || [])
@@ -123,13 +128,18 @@ export function PostDetailCard({
       {/* Post Title */}
       <h1 style={styles.postTitle}>{post.post_title}</h1>
 
-      {/* Visual Cover Photo */}
-      {imageUrl && (
-        <div style={styles.coverWrapper}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt={post.post_title} style={styles.coverImg} />
+      {/* Visual Cover / Media Carousel */}
+      {mediaList.length > 0 && (
+        <div style={{ marginBottom: '1.75rem' }}>
+          <ImageCarousel
+            media={mediaList}
+            altText={post.post_title}
+            aspectRatio="16 / 10"
+            maxHeight="520px"
+          />
         </div>
       )}
+
 
       {/* Post Text / Caption Content */}
       {rawText && (

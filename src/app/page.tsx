@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
-import { postService, activityService } from '@/services';
+import { postService, activityService, bookmarkService } from '@/services';
 import {
   Navbar,
   Toast,
@@ -55,23 +55,43 @@ export default function FeedPage() {
     setIsUserProfileOpen(true);
   };
 
-  // Auth guard & saved bookmarks loader
+  // Auth guard & saved bookmarks loader from real Backend API
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !user)) {
       router.replace('/login');
       return;
     }
 
-    try {
-      const saved = localStorage.getItem('saved_posts');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        queueMicrotask(() => setSavedPostIds(parsed));
+    async function loadSavedPostIds() {
+      try {
+        const res = await bookmarkService.getSavedPostIds();
+        if (res && res.data && Array.isArray(res.data)) {
+          setSavedPostIds(res.data);
+          try {
+            localStorage.setItem('saved_posts', JSON.stringify(res.data));
+          } catch {
+            // ignore
+          }
+          return;
+        }
+      } catch {
+        // Fallback to localStorage if network issue
+        try {
+          const saved = localStorage.getItem('saved_posts');
+          if (saved) {
+            setSavedPostIds(JSON.parse(saved));
+          }
+        } catch {
+          // ignore
+        }
       }
-    } catch {
-      // ignore
+    }
+
+    if (user) {
+      loadSavedPostIds();
     }
   }, [authLoading, isAuthenticated, user, router]);
+
 
   // Fetch posts effect
   useEffect(() => {
@@ -148,19 +168,37 @@ export default function FeedPage() {
     }
   };
 
-  const handleBookmarkToggle = (postId: number) => {
-    setSavedPostIds(prev => {
-      const isSaved = prev.includes(postId);
-      const next = isSaved ? prev.filter(id => id !== postId) : [...prev, postId];
+  const handleBookmarkToggle = async (postId: number) => {
+    const isSaved = savedPostIds.includes(postId);
+    const nextState = !isSaved;
+
+    setSavedPostIds(prev =>
+      nextState ? [...prev, postId] : prev.filter(id => id !== postId)
+    );
+    setPosts(prev =>
+      prev.map(p => (p.id === postId ? { ...p, is_saved: nextState } : p))
+    );
+
+    try {
+      await bookmarkService.toggleBookmark(postId, nextState);
+      showToast(nextState ? 'Disimpan ke koleksi Anda' : 'Dihapus dari koleksi tersimpan');
       try {
-        localStorage.setItem('saved_posts', JSON.stringify(next));
+        const nextIds = nextState ? [...savedPostIds, postId] : savedPostIds.filter(id => id !== postId);
+        localStorage.setItem('saved_posts', JSON.stringify(nextIds));
       } catch {
         // ignore
       }
-      showToast(isSaved ? 'Dihapus dari koleksi tersimpan' : 'Disimpan ke koleksi Anda');
-      return next;
-    });
+    } catch {
+      setSavedPostIds(prev =>
+        isSaved ? [...prev, postId] : prev.filter(id => id !== postId)
+      );
+      setPosts(prev =>
+        prev.map(p => (p.id === postId ? { ...p, is_saved: isSaved } : p))
+      );
+      showToast('Gagal mengubah status simpan. Silakan coba lagi.');
+    }
   };
+
 
   const handleDeletePost = async (postId: number) => {
     try {

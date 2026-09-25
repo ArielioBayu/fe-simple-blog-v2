@@ -9,3 +9,4 @@ export * from './SessionExpiredModal';
 export * from './OtpVerificationModal';
 export * from './PostMenuDropdown';
 export * from './DeleteConfirmModal';
+export * from './ImageCarousel';

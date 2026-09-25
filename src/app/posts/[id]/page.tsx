@@ -4,7 +4,7 @@ import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
-import { postService, commentService, activityService } from '@/services';
+import { postService, commentService, activityService, bookmarkService } from '@/services';
 import { Navbar, Toast, PostDetailCard, CommentForm, CommentList, UserProfileModal, LeftNavSidebar } from '@/components';
 import { PostDetailResponseData } from '@/types';
 
@@ -60,6 +60,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         if (!ignore) {
           if (postRes.status === 'fulfilled' && postRes.value?.data) {
             setPostData(postRes.value.data);
+            if (postRes.value.data.detail_post.is_saved !== undefined) {
+              setIsSaved(Boolean(postRes.value.data.detail_post.is_saved));
+            }
           } else {
             setError('Cerita ini tidak ditemukan atau mungkin telah dihapus.');
           }
@@ -84,17 +87,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
     loadPost();
 
-    try {
-      const saved = localStorage.getItem('saved_posts');
-      if (saved) {
-        const ids: number[] = JSON.parse(saved);
-        const savedStatus = ids.includes(Number(postId));
-        queueMicrotask(() => setIsSaved(savedStatus));
-      }
-    } catch {
-      // ignore
-    }
-
     return () => {
       ignore = true;
     };
@@ -108,6 +100,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       ]);
       if (res.status === 'fulfilled' && res.value?.data) {
         setPostData(res.value.data);
+        if (res.value.data.detail_post.is_saved !== undefined) {
+          setIsSaved(Boolean(res.value.data.detail_post.is_saved));
+        }
       }
       if (countRes.status === 'fulfilled' && countRes.value?.data?.comment_count !== undefined) {
         setCommentCount(countRes.value.data.comment_count);
@@ -155,20 +150,28 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleBookmarkToggle = () => {
-    try {
-      const numId = Number(postId);
-      const saved = localStorage.getItem('saved_posts');
-      const ids: number[] = saved ? JSON.parse(saved) : [];
+  const handleBookmarkToggle = async () => {
+    const nextState = !isSaved;
+    setIsSaved(nextState);
 
-      const next = isSaved ? ids.filter(id => id !== numId) : [...ids, numId];
-      localStorage.setItem('saved_posts', JSON.stringify(next));
-      setIsSaved(!isSaved);
-      showToast(isSaved ? 'Dihapus dari koleksi tersimpan' : 'Disimpan ke koleksi Anda');
+    try {
+      await bookmarkService.toggleBookmark(postId, nextState);
+      showToast(nextState ? 'Disimpan ke koleksi Anda' : 'Dihapus dari koleksi tersimpan');
+      try {
+        const numId = Number(postId);
+        const saved = localStorage.getItem('saved_posts');
+        const ids: number[] = saved ? JSON.parse(saved) : [];
+        const nextIds = nextState ? [...ids.filter(id => id !== numId), numId] : ids.filter(id => id !== numId);
+        localStorage.setItem('saved_posts', JSON.stringify(nextIds));
+      } catch {
+        // ignore
+      }
     } catch {
-      showToast('Gagal menyimpan. Silakan coba lagi.');
+      setIsSaved(!nextState);
+      showToast('Gagal mengubah status simpan. Silakan coba lagi.');
     }
   };
+
 
   const handleShare = async () => {
     if (typeof window !== 'undefined' && navigator.clipboard) {

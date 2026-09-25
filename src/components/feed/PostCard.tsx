@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Post } from '@/types';
 import { postService, uploadService } from '@/services';
-import { PostMenuDropdown } from '@/components/common';
+import { PostMenuDropdown, ImageCarousel } from '@/components/common';
 
 interface PostCardProps {
   post: Post;
@@ -31,6 +32,7 @@ export function PostCard({
   currentUserId,
   onDeletePost,
 }: PostCardProps) {
+  const router = useRouter();
   const isAuthor = Boolean(currentUserId && post.user_id && currentUserId === post.user_id);
   const [likeCount, setLikeCount] = useState<number | null>(null);
   const [commentCount, setCommentCount] = useState<number | null>(null);
@@ -102,6 +104,11 @@ export function PostCard({
   const rawText = imageMatch ? post.post_content.replace(imageMatch[0], '').trim() : post.post_content;
   const postSnippet = rawText.length > 250 ? `${rawText.substring(0, 250)}...` : rawText;
 
+  // Multi-image list from BE post_media or fallback to single cover photo
+  const mediaList = (post.media && post.media.length > 0)
+    ? post.media
+    : (imagePath ? [{ file_path: imagePath }] : (imageUrl ? [{ file_path: imageUrl }] : []));
+
   // Filter out empty hashtags
   const validTags = (post.post_hashtags || [])
     .map((t) => t.trim().replace(/^#/, ''))
@@ -164,13 +171,19 @@ export function PostCard({
         <h3 style={styles.postTitle}>{post.post_title}</h3>
       </Link>
 
-      {/* Cover Image if attached */}
-      {imageUrl && (
-        <Link href={`/posts/${post.id}`} style={styles.coverLink}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt={post.post_title} style={styles.coverImg} />
-        </Link>
+      {/* Media Carousel / Cover Photo */}
+      {mediaList.length > 0 && (
+        <div style={{ marginTop: '0.85rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
+          <ImageCarousel
+            media={mediaList}
+            altText={post.post_title}
+            aspectRatio="16 / 10"
+            maxHeight="440px"
+            onImageClick={() => router.push(`/posts/${post.id}`)}
+          />
+        </div>
       )}
+
 
       {/* Card Content */}
       <div style={styles.cardBody}>

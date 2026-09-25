@@ -12,6 +12,12 @@ interface CreatePostModalProps {
   onSubmit: (data: CreatePostRequest) => Promise<void>;
 }
 
+interface AttachedMediaItem {
+  filePath: string;
+  uploadId?: number;
+  name?: string;
+}
+
 export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalProps) {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -21,9 +27,9 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [hashtags, setHashtags] = useState('');
-  const [attachedImagePath, setAttachedImagePath] = useState<string | null>(null);
-  const [attachedUploadId, setAttachedUploadId] = useState<number | null>(null);
+  const [attachedMediaList, setAttachedMediaList] = useState<AttachedMediaItem[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -75,29 +81,47 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   if ((!isOpen && !animateOut) || !mounted) return null;
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB');
+    if (attachedMediaList.length + files.length > 10) {
+      setError(`Maksimal 10 gambar per postingan. Anda sudah memiliki ${attachedMediaList.length} gambar.`);
       return;
+    }
+
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError(`Foto "${file.name}" melebihi batas 5MB.`);
+        return;
+      }
     }
 
     setUploadingImage(true);
     setError('');
 
     try {
-      const res = await uploadService.uploadImage(file);
-      if (res.data?.file_path) {
-        setAttachedImagePath(res.data.file_path);
-        if (res.data.id) {
-          setAttachedUploadId(Number(res.data.id));
+      const newlyUploaded: AttachedMediaItem[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadProgressText(files.length > 1 ? `Mengunggah ${i + 1}/${files.length}...` : 'Mengunggah foto...');
+        const res = await uploadService.uploadImage(file);
+        if (res.data?.file_path) {
+          newlyUploaded.push({
+            filePath: res.data.file_path,
+            uploadId: res.data.id ? Number(res.data.id) : undefined,
+            name: file.name,
+          });
         }
       }
+      setAttachedMediaList((prev) => [...prev, ...newlyUploaded]);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to upload image');
+      setError(err instanceof Error ? err.message : 'Gagal mengunggah foto');
     } finally {
       setUploadingImage(false);
+      setUploadProgressText('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -120,11 +144,29 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   };
 
   const handleSelectFromGallery = (filePath: string, uploadId?: number) => {
-    setAttachedImagePath(filePath);
-    if (uploadId) {
-      setAttachedUploadId(Number(uploadId));
+    const exists = attachedMediaList.some((m) => m.filePath === filePath);
+    if (exists) {
+      // Deselect
+      setAttachedMediaList((prev) => prev.filter((m) => m.filePath !== filePath));
+      return;
     }
-    setShowMediaGallery(false);
+
+    if (attachedMediaList.length >= 10) {
+      setError('Maksimal 10 foto per postingan.');
+      return;
+    }
+
+    setAttachedMediaList((prev) => [
+      ...prev,
+      {
+        filePath,
+        uploadId: uploadId ? Number(uploadId) : undefined,
+      },
+    ]);
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setAttachedMediaList((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,24 +181,31 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
 
     const finalContent = content.trim();
 
+    const uploadIds = attachedMediaList
+      .map((m) => m.uploadId)
+      .filter((id): id is number => typeof id === 'number' && id > 0);
+
+    const primaryFilePath = attachedMediaList[0]?.filePath || undefined;
+    const primaryUploadId = attachedMediaList[0]?.uploadId || undefined;
+
     try {
       await onSubmit({
         post_title: title.trim(),
         post_content: finalContent,
         post_hashtags: hashtagsArr,
-        file_path: attachedImagePath || undefined,
-        filepath: attachedImagePath || undefined,
-        upload_id: attachedUploadId || undefined,
+        upload_ids: uploadIds.length > 0 ? uploadIds : undefined,
+        file_path: primaryFilePath,
+        filepath: primaryFilePath,
+        upload_id: primaryUploadId,
       });
 
       setTitle('');
       setContent('');
       setHashtags('');
-      setAttachedImagePath(null);
-      setAttachedUploadId(null);
+      setAttachedMediaList([]);
       handleClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to publish story');
+      setError(err instanceof Error ? err.message : 'Gagal mempublikasikan cerita');
     } finally {
       setLoading(false);
     }
@@ -168,7 +217,6 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
     }
   };
 
-  const previewUrl = attachedImagePath ? uploadService.getImageUrl(attachedImagePath) : null;
 
   const modalNode = (
     <div
@@ -307,7 +355,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             </div>
             <div>
               <h3 id="create-modal-title" style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--heading-color)', fontFamily: 'var(--font-outfit)' }}>
-                Create New Story
+                Create New Post
               </h3>
               <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
                 Publishing as @{username}
@@ -357,7 +405,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
         {/* Form */}
         <form onSubmit={handleSubmit} style={styles.modalForm}>
           <div style={styles.inputGroup}>
-            <label style={styles.inputLabel}>Story Title</label>
+            <label style={styles.inputLabel}>Post Title</label>
             <input
               type="text"
               placeholder="Give your thoughts a vibrant title..."
@@ -379,22 +427,57 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             />
           </div>
 
-          {/* Attached Image Preview */}
-          {previewUrl && (
-            <div style={styles.imagePreviewWrap}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="Attached cover" style={styles.previewImage} />
-              <button
-                type="button"
-                style={styles.removeImageBtn}
-                onClick={() => {
-                  setAttachedImagePath(null);
-                  setAttachedUploadId(null);
-                }}
-                title="Hapus foto sampul"
-              >
-                &times;
-              </button>
+          {/* Attached Multi-Image Previews (Up to 10 images) */}
+          {attachedMediaList.length > 0 && (
+            <div style={styles.multiPreviewContainer}>
+              <div style={styles.multiPreviewHeader}>
+                <span style={styles.multiPreviewTitle}>
+                  Foto Terlampir ({attachedMediaList.length}/10)
+                </span>
+                <span style={styles.multiPreviewSubtitle}>
+                  Foto 1 otomatis menjadi foto sampul
+                </span>
+              </div>
+              <div style={styles.multiPreviewGrid}>
+                {attachedMediaList.map((media, idx) => {
+                  const url = uploadService.getImageUrl(media.filePath);
+                  return (
+                    <div key={idx} style={styles.multiPreviewItem}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url || ''} alt={`Foto ${idx + 1}`} style={styles.multiPreviewImg} />
+                      {idx === 0 ? (
+                        <span style={styles.coverBadge}>Sampul</span>
+                      ) : (
+                        <span style={styles.orderBadge}>{idx + 1}</span>
+                      )}
+                      <button
+                        type="button"
+                        style={styles.removeImageBtn}
+                        onClick={() => handleRemoveMedia(idx)}
+                        title={`Hapus foto ${idx + 1}`}
+                        aria-label={`Hapus foto ${idx + 1}`}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  );
+                })}
+                {attachedMediaList.length < 10 && (
+                  <button
+                    type="button"
+                    style={styles.addMoreBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage || loading}
+                    title="Tambah foto lagi (maksimal 10)"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span style={{ fontSize: '0.72rem', marginTop: '3px', fontWeight: 600 }}>Tambah</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -402,7 +485,9 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
           {showMediaGallery && (
             <div style={styles.galleryContainer}>
               <div style={styles.galleryHeader}>
-                <span style={styles.galleryTitle}>Open From Galery</span>
+                <span style={styles.galleryTitle}>
+                  Pilih dari Galeri ({attachedMediaList.length}/10 Foto Terpilih)
+                </span>
                 <button
                   type="button"
                   style={styles.galleryCloseBtn}
@@ -427,7 +512,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                 <div style={styles.galleryGrid}>
                   {mediaList.map(media => {
                     const thumbUrl = uploadService.getImageUrl(media.file_path);
-                    const isSelected = attachedImagePath === media.file_path;
+                    const isSelected = attachedMediaList.some(m => m.filePath === media.file_path);
                     return (
                       <button
                         key={media.id || media.file_path}
@@ -436,6 +521,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                         style={{
                           ...styles.galleryItem,
                           borderColor: isSelected ? 'var(--social-blue)' : 'transparent',
+                          boxShadow: isSelected ? '0 0 0 2px var(--social-blue)' : 'none',
                         }}
                         title={media.file_name || 'Media'}
                       >
@@ -445,6 +531,13 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                           alt={media.file_name || 'Upload'}
                           style={styles.galleryImg}
                         />
+                        {isSelected && (
+                          <div style={styles.gallerySelectedCheck}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -467,6 +560,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               accept="image/png,image/jpeg,image/webp,image/gif"
               onChange={handleImageFileChange}
               style={{ display: 'none' }}
@@ -478,13 +572,13 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                 className="btn btn-secondary"
                 style={{ fontSize: '0.82rem', padding: '0.45rem 0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingImage || loading}
-                title="Unggah Foto Baru"
+                disabled={uploadingImage || loading || attachedMediaList.length >= 10}
+                title="Unggah Foto (hingga 10 foto)"
               >
                 {uploadingImage ? (
                   <>
                     <span className="spinner" style={{ width: '12px', height: '12px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }}></span>
-                    Mengunggah...
+                    {uploadProgressText || 'Mengunggah...'}
                   </>
                 ) : (
                   <>
@@ -492,7 +586,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                       <circle cx="12" cy="13" r="4"></circle>
                     </svg>
-                    Unggah Foto
+                    <span>Unggah Foto ({attachedMediaList.length}/10)</span>
                   </>
                 )}
               </button>
@@ -521,6 +615,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                 Galeri Saya
               </button>
             </div>
+
 
             <button
               type="button"
@@ -629,36 +724,126 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
   },
-  imagePreviewWrap: {
-    position: 'relative',
-    borderRadius: 'var(--radius-md)',
-    overflow: 'hidden',
-    maxHeight: '180px',
+  multiPreviewContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.65rem',
+    backgroundColor: 'var(--bg-elevated, rgba(255, 255, 255, 0.04))',
     border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    padding: '0.85rem',
   },
-  previewImage: {
+  multiPreviewHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: '0.5rem',
+    flexWrap: 'wrap',
+  },
+  multiPreviewTitle: {
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    color: 'var(--heading-color)',
+  },
+  multiPreviewSubtitle: {
+    fontSize: '0.74rem',
+    color: 'var(--fg-muted)',
+  },
+  multiPreviewGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
+    gap: '0.6rem',
+    maxHeight: '210px',
+    overflowY: 'auto',
+    paddingRight: '2px',
+  },
+  multiPreviewItem: {
+    position: 'relative',
+    aspectRatio: '1 / 1',
+    borderRadius: 'var(--radius-sm, 6px)',
+    overflow: 'hidden',
+    border: '1px solid var(--border)',
+    backgroundColor: 'var(--bg-card)',
+  },
+  multiPreviewImg: {
     width: '100%',
-    height: '180px',
+    height: '100%',
     objectFit: 'cover',
     display: 'block',
   },
+  coverBadge: {
+    position: 'absolute',
+    bottom: '4px',
+    left: '4px',
+    backgroundColor: 'var(--social-blue, #0095F6)',
+    color: '#fff',
+    fontSize: '0.65rem',
+    fontWeight: 800,
+    padding: '1px 5px',
+    borderRadius: '4px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+    pointerEvents: 'none',
+  },
+  orderBadge: {
+    position: 'absolute',
+    bottom: '4px',
+    left: '4px',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    color: '#fff',
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    padding: '1px 5px',
+    borderRadius: '4px',
+    pointerEvents: 'none',
+  },
+  addMoreBtn: {
+    aspectRatio: '1 / 1',
+    borderRadius: 'var(--radius-sm, 6px)',
+    border: '1.5px dashed var(--border)',
+    backgroundColor: 'transparent',
+    color: 'var(--fg-muted)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'var(--transition)',
+  },
   removeImageBtn: {
     position: 'absolute',
-    top: '8px',
-    right: '8px',
-    background: 'rgba(0, 0, 0, 0.65)',
+    top: '4px',
+    right: '4px',
+    background: 'rgba(0, 0, 0, 0.72)',
     color: '#fff',
     border: 'none',
     borderRadius: '50%',
-    width: '26px',
-    height: '26px',
-    fontSize: '1.1rem',
+    width: '22px',
+    height: '22px',
+    fontSize: '1rem',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     lineHeight: 1,
+    zIndex: 2,
+    transition: 'background-color 0.15s ease',
   },
+  gallerySelectedCheck: {
+    position: 'absolute',
+    top: '4px',
+    right: '4px',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--social-blue, #0095F6)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+  },
+
   modalActions: {
     display: 'flex',
     alignItems: 'center',
