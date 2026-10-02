@@ -18,6 +18,8 @@ interface PostCardProps {
   onUserClick?: (userId: number, username?: string) => void;
   currentUserId?: number | null;
   onDeletePost?: (postId: number) => void;
+  /** Called when user clicks the comment icon — opens the CommentDrawer */
+  onCommentClick?: (post: Post) => void;
 }
 
 export function PostCard({
@@ -31,6 +33,7 @@ export function PostCard({
   onUserClick,
   currentUserId,
   onDeletePost,
+  onCommentClick,
 }: PostCardProps) {
   const router = useRouter();
   const isAuthor = Boolean(currentUserId && post.user_id && currentUserId === post.user_id);
@@ -167,9 +170,21 @@ export function PostCard({
       </div>
 
       {/* Post Title */}
-      <Link href={`/posts/${post.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+      <div
+        onClick={() => onCommentClick?.(post)}
+        style={{ cursor: 'pointer', display: 'block' }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onCommentClick?.(post);
+          }
+        }}
+        title={`Buka postingan & komentar: ${post.post_title}`}
+      >
         <h3 style={styles.postTitle}>{post.post_title}</h3>
-      </Link>
+      </div>
 
       {/* Media Carousel / Cover Photo */}
       {mediaList.length > 0 && (
@@ -179,7 +194,7 @@ export function PostCard({
             altText={post.post_title}
             aspectRatio="16 / 10"
             maxHeight="440px"
-            onImageClick={() => router.push(`/posts/${post.id}`)}
+            onImageClick={() => onCommentClick?.(post)}
           />
         </div>
       )}
@@ -246,20 +261,21 @@ export function PostCard({
             )}
           </button>
 
-          {/* Comment Link with Counter */}
-          <Link
-            href={`/posts/${post.id}`}
+          {/* Comment Button with Counter */}
+          <button
+            type="button"
+            onClick={() => onCommentClick?.(post)}
             style={styles.actionIconBtn}
             title="Lihat komentar"
             aria-label={`Buka komentar untuk postingan ${post.post_title}`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
             {commentCount !== null && (
               <span style={styles.actionCount}>{commentCount}</span>
             )}
-          </Link>
+          </button>
 
           {/* Share Button */}
           <button
@@ -317,11 +333,15 @@ export function PostCard({
           </span>
         </div>
 
-        <Link href={`/posts/${post.id}`} style={styles.viewCommentsLink}>
+        <button
+          type="button"
+          onClick={() => onCommentClick?.(post)}
+          style={styles.viewCommentsLink}
+        >
           {commentCount !== null && commentCount > 0
             ? `View all ${commentCount} comments →`
             : 'View full story & comments →'}
-        </Link>
+        </button>
       </div>
     </article>
   );

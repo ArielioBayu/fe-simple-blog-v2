@@ -99,7 +99,7 @@ export function FeedSidebar({
               style={styles.actionBtn}
               onClick={onOpenCreateModal}
             >
-              + Write Story
+              + Write Post
             </button>
             {handleProfileClick && (
               <button

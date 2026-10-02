@@ -10,3 +10,4 @@ export * from './OtpVerificationModal';
 export * from './PostMenuDropdown';
 export * from './DeleteConfirmModal';
 export * from './ImageCarousel';
+export * from './CommentDrawer';

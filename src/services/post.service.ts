@@ -9,11 +9,6 @@ import {
 } from '@/types';
 
 export const postService = {
-  /**
-   * Fetches paginated posts.
-   * New Endpoint: GET /posts?pageIndex=1&pageSize=10
-   * Legacy Fallback: GET /posts/get-all-post?pageIndex=1&pageSize=10
-   */
   async getAllPosts(pageIndex: number = 1, pageSize: number = 10): Promise<ApiResponse<Post[]>> {
     try {
       return await apiFetch<Post[]>(`/posts?pageIndex=${pageIndex}&pageSize=${pageSize}`);
@@ -22,11 +17,6 @@ export const postService = {
     }
   },
 
-  /**
-   * Fetches single post detail by ID.
-   * New Endpoint: GET /posts/:postId
-   * Legacy Fallback: GET /posts/get-post-by-id/:postId
-   */
   async getPostById(postId: string | number): Promise<ApiResponse<PostDetailResponseData>> {
     try {
       return await apiFetch<PostDetailResponseData>(`/posts/${postId}`);
@@ -35,11 +25,6 @@ export const postService = {
     }
   },
 
-  /**
-   * Creates a new blog story / post.
-   * New Endpoint: POST /posts
-   * Legacy Fallback: POST /posts/create-post
-   */
   async createPost(data: CreatePostRequest): Promise<ApiResponse<void>> {
     try {
       return await apiFetch<void>('/posts', {
@@ -54,10 +39,6 @@ export const postService = {
     }
   },
 
-  /**
-   * Fetches real-time like count for a specific post.
-   * Endpoint: GET /posts/like-count/:postId (Alias: /posts/count-like/:postId)
-   */
   async getLikeCount(postId: string | number): Promise<ApiResponse<PostLikeCountData>> {
     try {
       return await apiFetch<PostLikeCountData>(`/posts/like-count/${postId}`);
@@ -66,24 +47,18 @@ export const postService = {
     }
   },
 
-  /**
-   * Fetches real-time comment count for a specific post.
-   * Endpoint: GET /posts/comment-count/:postId (Alias: /posts/count-comment/:postId)
-   */
   async getCommentCount(postId: string | number): Promise<ApiResponse<PostCommentCountData>> {
     try {
-      return await apiFetch<PostCommentCountData>(`/posts/comment-count/${postId}`);
+      return await apiFetch<PostCommentCountData>(`/posts/comments/count/${postId}`);
     } catch {
-      return await apiFetch<PostCommentCountData>(`/posts/count-comment/${postId}`);
+      try {
+        return await apiFetch<PostCommentCountData>(`/posts/comment-count/${postId}`);
+      } catch {
+        return await apiFetch<PostCommentCountData>(`/posts/count-comment/${postId}`);
+      }
     }
   },
 
-  /**
-   * Fetches all posts created by a specific user.
-   * New Endpoint: GET /posts/user/:userId?pageIndex=1&pageSize=12
-   * Fallback 1: GET /users/:userId/posts
-   * Fallback 2: Client-side filter of getAllPosts
-   */
   async getUserPosts(userId: string | number, pageIndex: number = 1, pageSize: number = 12): Promise<ApiResponse<Post[]>> {
     try {
       return await apiFetch<Post[]>(`/posts/user/${userId}?pageIndex=${pageIndex}&pageSize=${pageSize}`);
@@ -103,10 +78,6 @@ export const postService = {
     }
   },
 
-  /**
-   * Deletes a post owned by the authenticated user.
-   * Endpoint: DELETE /posts/:postId
-   */
   async deletePost(postId: string | number): Promise<ApiResponse<void>> {
     return await apiFetch<void>(`/posts/${postId}`, {
       method: 'DELETE',

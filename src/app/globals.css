@@ -1139,3 +1139,18 @@ select:focus-visible {
   }
 }
 
+/* ==========================================================================
+   Comment & Reply UI Animations
+   ========================================================================== */
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

@@ -17,6 +17,7 @@ import {
   EmptyFeedState,
   MobileBottomNav,
   LeftNavSidebar,
+  CommentDrawer,
 } from '@/components';
 import { Post, CreatePostRequest } from '@/types';
 
@@ -43,6 +44,26 @@ export default function FeedPage() {
   const [savedPostIds, setSavedPostIds] = useState<number[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [animatingPostId, setAnimatingPostId] = useState<number | null>(null);
+
+  // Comment Drawer state
+  const [commentDrawerPost, setCommentDrawerPost] = useState<Post | null>(null);
+  const [isCommentDrawerOpen, setIsCommentDrawerOpen] = useState(false);
+
+  const handleOpenCommentDrawer = (post: Post) => {
+    setCommentDrawerPost(post);
+    setIsCommentDrawerOpen(true);
+  };
+
+  const handleCloseCommentDrawer = () => {
+    setIsCommentDrawerOpen(false);
+  };
+
+  const handleCommentCountChange = (postId: number, delta: number) => {
+    // No-op for feed page — counts are fetched per-card by PostCard itself
+    // This exists to satisfy the CommentDrawer prop contract
+    void postId;
+    void delta;
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -292,7 +313,7 @@ export default function FeedPage() {
             <div style={styles.feedHeader}>
               <div>
                 <h2 style={styles.feedTitle}>
-                  {activeTag === 'all' ? 'Feed Stories' : `#${activeTag}`}
+                  {activeTag === 'all' ? 'Feed Post' : `#${activeTag}`}
                 </h2>
                 <p style={styles.feedSubtitle}>
                   {activeTag === 'all'
@@ -337,6 +358,7 @@ export default function FeedPage() {
                     onSelectTag={setActiveTag}
                     onUserClick={handleOpenUserProfile}
                     onDeletePost={handleDeletePost}
+                    onCommentClick={handleOpenCommentDrawer}
                   />
                 ))}
               </div>
@@ -424,6 +446,29 @@ export default function FeedPage() {
           }
         }}
         onProfileClick={() => router.push('/profile')}
+      />
+      {/* Comment Drawer — Instagram-style full-screen split modal */}
+      <CommentDrawer
+        post={commentDrawerPost}
+        isOpen={isCommentDrawerOpen}
+        onClose={handleCloseCommentDrawer}
+        onToast={showToast}
+        onCommentCountChange={handleCommentCountChange}
+        savedPostIds={savedPostIds}
+        onLikeToggled={(postId, newIsLiked) => {
+          setPosts(prev =>
+            prev.map(p => (p.id === postId ? { ...p, is_liked: newIsLiked } : p)),
+          );
+          // Also update the drawer's own post reference
+          setCommentDrawerPost(prev =>
+            prev && prev.id === postId ? { ...prev, is_liked: newIsLiked } : prev,
+          );
+        }}
+        onBookmarkToggled={(postId, newIsSaved) => {
+          setSavedPostIds(prev =>
+            newIsSaved ? [...prev.filter(id => id !== postId), postId] : prev.filter(id => id !== postId),
+          );
+        }}
       />
     </div>
   );

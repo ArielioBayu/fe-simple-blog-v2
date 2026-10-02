@@ -18,9 +18,9 @@ interface ImageCarouselProps {
   onImageClick?: (index: number) => void;
   autoPlayInterval?: number;
   className?: string;
+  style?: React.CSSProperties;
+  objectFit?: 'cover' | 'contain';
 }
-
-type SlideDirection = 'next' | 'prev' | 'none';
 
 export function ImageCarousel({
   media,
@@ -30,17 +30,16 @@ export function ImageCarousel({
   onImageClick,
   autoPlayInterval = 4500,
   className = '',
+  style,
+  objectFit = 'cover',
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [prevIndex, setPrevIndex] = useState<number | null>(null);
-  const [direction, setDirection] = useState<SlideDirection>('none');
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [isInteracting, setIsInteracting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionLockRef = useRef(false);
 
   // Normalize media items to string file paths
   const images = (media || [])
@@ -52,70 +51,49 @@ export function ImageCarousel({
 
   const total = images.length;
 
-  const goTo = useCallback((nextIdx: number, dir: SlideDirection) => {
-    if (isAnimating) return;
+  // Navigate with a lock to prevent overlapping transitions
+  const navigateTo = useCallback((nextIdx: number) => {
+    if (transitionLockRef.current || nextIdx === currentIndex) return;
 
-    setPrevIndex(currentIndex);
-    setDirection(dir);
+    transitionLockRef.current = true;
+    setIsTransitioning(true);
     setCurrentIndex(nextIdx);
-    setIsAnimating(true);
 
-    // Clear any existing timer
-    if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
-
-    // Animation duration: 520ms — matches CSS transition
-    animationTimerRef.current = setTimeout(() => {
-      setPrevIndex(null);
-      setIsAnimating(false);
-    }, 520);
-  }, [currentIndex, isAnimating]);
+    // Unlock after transition completes (matches CSS transition duration 600ms)
+    setTimeout(() => {
+      transitionLockRef.current = false;
+      setIsTransitioning(false);
+    }, 600);
+  }, [currentIndex]);
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     e?.preventDefault();
-    const nextIdx = currentIndex > 0 ? currentIndex - 1 : total - 1;
-    goTo(nextIdx, 'prev');
-  }, [currentIndex, total, goTo]);
+    navigateTo(currentIndex > 0 ? currentIndex - 1 : total - 1);
+  }, [currentIndex, total, navigateTo]);
 
   const handleNext = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     e?.preventDefault();
-    const nextIdx = currentIndex < total - 1 ? currentIndex + 1 : 0;
-    goTo(nextIdx, 'next');
-  }, [currentIndex, total, goTo]);
+    navigateTo(currentIndex < total - 1 ? currentIndex + 1 : 0);
+  }, [currentIndex, total, navigateTo]);
 
-  const handleDotClick = useCallback((idx: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (idx === currentIndex) return;
-    const dir: SlideDirection = idx > currentIndex ? 'next' : 'prev';
-    goTo(idx, dir);
-  }, [currentIndex, goTo]);
-
-  // Auto-swipe with pause on hover/touch
+  // Auto-play — pauses on hover
   useEffect(() => {
-    if (total <= 1 || isHovered || isInteracting || isAnimating) return;
+    if (total <= 1 || isHovered || isTransitioning) return;
 
     const timer = setInterval(() => {
       const nextIdx = currentIndex < total - 1 ? currentIndex + 1 : 0;
-      goTo(nextIdx, 'next');
+      navigateTo(nextIdx);
     }, autoPlayInterval);
 
     return () => clearInterval(timer);
-  }, [total, isHovered, isInteracting, isAnimating, autoPlayInterval, currentIndex, goTo]);
+  }, [total, isHovered, isTransitioning, autoPlayInterval, currentIndex, navigateTo]);
 
-  // Cleanup animation timer on unmount
-  useEffect(() => {
-    return () => {
-      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
-    };
-  }, []);
-
-  // Touch Swipe Gesture for mobile
+  // Touch swipe support
   const minSwipeDistance = 40;
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setIsInteracting(true);
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
   };
@@ -125,87 +103,49 @@ export function ImageCarousel({
   };
 
   const onTouchEnd = () => {
-    setIsInteracting(false);
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe && total > 1) {
-      handleNext();
-    } else if (isRightSwipe && total > 1) {
-      handlePrev();
-    }
+    if (distance > minSwipeDistance) handleNext();
+    else if (distance < -minSwipeDistance) handlePrev();
   };
 
-  // Keyboard navigation when focused
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!containerRef.current || document.activeElement !== containerRef.current) return;
-      if (e.key === 'ArrowLeft') {
-        handlePrev();
-      } else if (e.key === 'ArrowRight') {
-        handleNext();
-      }
+      if (e.key === 'ArrowLeft') handlePrev();
+      else if (e.key === 'ArrowRight') handleNext();
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNext, handlePrev]);
 
   if (total === 0) return null;
 
-  // Single Image Render (Zero carousel clutter, clean & native)
+  // ── Single Image: clean, no chrome ──────────────────────────────────────
   if (total === 1) {
     const src = uploadService.getImageUrl(images[0]) || images[0];
     return (
       <div
-        style={{
-          ...styles.carouselContainer,
-          aspectRatio,
-          maxHeight,
-        }}
+        style={{ ...styles.outerWrap, aspectRatio, maxHeight, ...style }}
         className={`image-carousel-wrap ${className}`}
         onClick={() => onImageClick?.(0)}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={altText}
-          style={styles.image}
-          loading="lazy"
-        />
+        <img src={src} alt={altText} style={{ ...styles.slideImg, objectFit }} loading="lazy" />
       </div>
     );
   }
 
-  // Multi-Image Carousel (2 to 10 images) with directional slide animation
-  const currentSrc = uploadService.getImageUrl(images[currentIndex]) || images[currentIndex];
-  const prevSrc = prevIndex !== null
-    ? (uploadService.getImageUrl(images[prevIndex]) || images[prevIndex])
-    : null;
-
-  // Compute CSS animation class names based on direction
-  const enterClass = direction === 'next'
-    ? 'slide-enter-from-right'
-    : direction === 'prev'
-      ? 'slide-enter-from-left'
-      : 'slide-enter-fade';
-
-  const exitClass = direction === 'next'
-    ? 'slide-exit-to-left'
-    : direction === 'prev'
-      ? 'slide-exit-to-right'
-      : '';
+  // ── Multi-Image: Sliding Strip Carousel ─────────────────────────────────
+  // All images sit side-by-side in a long strip.
+  // Only the strip's translateX changes — one smooth CSS transition, zero jank.
+  const translateX = -(currentIndex * 100);
 
   return (
     <div
       ref={containerRef}
-      style={{
-        ...styles.carouselContainer,
-        aspectRatio,
-        maxHeight,
-      }}
+      style={{ ...styles.outerWrap, aspectRatio, maxHeight, ...style }}
       className={`image-carousel-wrap ${className}`}
       tabIndex={0}
       role="region"
@@ -220,107 +160,52 @@ export function ImageCarousel({
     >
       <style>{`
         /* ================================================================
-           ImageCarousel — Smooth Directional Slide Animation System
-           Using CSS @keyframes with direction tracking for silky UX
+           ImageCarousel — Sliding Strip with Premium Easing
+           All slides lay side-by-side; the strip translates as one unit.
+           Result: perfectly sync'd, physically accurate, zero jank.
         ================================================================ */
 
-        .carousel-slide-layer {
-          position: absolute;
-          inset: 0;
+        .carousel-strip {
+          display: flex;
           width: 100%;
           height: 100%;
+          /* Apple-grade spring easing: fast start, smooth deceleration */
+          transition: transform 0.58s cubic-bezier(0.42, 0, 0.12, 1);
+          will-change: transform;
         }
 
-        .carousel-slide-layer img {
+        .carousel-slide {
+          flex: 0 0 100%;
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .carousel-slide img {
+          width: 100%;
+          height: 100%;
+          object-fit: ${objectFit};
           display: block;
+          /* Subtle scale effect on the non-active slides for depth perception */
+          transition: transform 0.58s cubic-bezier(0.42, 0, 0.12, 1),
+                      filter 0.58s cubic-bezier(0.42, 0, 0.12, 1);
+          transform: scale(1.03);
+          filter: brightness(0.88);
         }
 
-        /* ── Entering animations ─────────────────────────────────────── */
-        .slide-enter-from-right {
-          animation: slideInFromRight 0.52s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          z-index: 2;
-        }
-        .slide-enter-from-left {
-          animation: slideInFromLeft 0.52s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          z-index: 2;
-        }
-        .slide-enter-fade {
-          animation: slideFadeIn 0.38s ease forwards;
-          z-index: 2;
+        .carousel-slide.active img {
+          transform: scale(1);
+          filter: brightness(1);
         }
 
-        /* ── Exiting animations ──────────────────────────────────────── */
-        .slide-exit-to-left {
-          animation: slideOutToLeft 0.52s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          z-index: 1;
-        }
-        .slide-exit-to-right {
-          animation: slideOutToRight 0.52s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          z-index: 1;
-        }
-
-        /* ── Keyframe definitions ────────────────────────────────────── */
-        @keyframes slideInFromRight {
-          from {
-            transform: translateX(100%);
-            opacity: 0.6;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
-        @keyframes slideInFromLeft {
-          from {
-            transform: translateX(-100%);
-            opacity: 0.6;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
-        @keyframes slideOutToLeft {
-          from {
-            transform: translateX(0);
-            opacity: 1;
-          }
-          to {
-            transform: translateX(-100%);
-            opacity: 0.4;
-          }
-        }
-
-        @keyframes slideOutToRight {
-          from {
-            transform: translateX(0);
-            opacity: 1;
-          }
-          to {
-            transform: translateX(100%);
-            opacity: 0.4;
-          }
-        }
-
-        @keyframes slideFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        /* ── Instagram-style Compact Floating Navigation Buttons ─────── */
+        /* ── Nav Buttons ─────────────────────────────────────────────── */
         .ig-carousel-btn {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
           width: 28px;
           height: 28px;
-          min-width: 28px;
-          min-height: 28px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.92);
           backdrop-filter: blur(8px);
@@ -333,7 +218,7 @@ export function ImageCarousel({
           cursor: pointer;
           z-index: 5;
           padding: 0;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.12);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.12);
           transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
                       opacity 0.22s ease,
                       background-color 0.18s ease;
@@ -349,27 +234,45 @@ export function ImageCarousel({
           opacity: 1 !important;
           background: #ffffff;
           transform: translateY(-50%) scale(1.1);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.32);
         }
 
         .ig-carousel-btn:active {
-          transform: translateY(-50%) scale(0.92);
+          transform: translateY(-50%) scale(0.93);
         }
 
         .ig-carousel-prev { left: 10px; }
         .ig-carousel-next { right: 10px; }
 
         @media (hover: none) {
-          .ig-carousel-btn { opacity: 0.85; }
+          .ig-carousel-btn { opacity: 0.82; }
         }
 
-        /* ── Instagram-style Dots ────────────────────────────────────── */
+        /* ── Progress Bar Indicator ─────────────────────────────────── */
+        .ig-progress-bar-track {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: rgba(255,255,255,0.18);
+          z-index: 5;
+          pointer-events: none;
+        }
+
+        .ig-progress-bar-fill {
+          height: 100%;
+          background: rgba(255,255,255,0.88);
+          transition: width 0.58s cubic-bezier(0.42, 0, 0.12, 1);
+        }
+
+        /* ── Dot Indicators ─────────────────────────────────────────── */
         .ig-carousel-dot {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.5);
-          transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+          background: rgba(255,255,255,0.5);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           cursor: pointer;
           border: none;
           padding: 0;
@@ -379,40 +282,44 @@ export function ImageCarousel({
           width: 18px;
           border-radius: 4px;
           background: #ffffff;
-          box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
+          box-shadow: 0 0 6px rgba(255,255,255,0.85);
         }
       `}</style>
 
-      {/* Image Layers Stack — exit layer (prev) sits below enter layer (current) */}
-
-      {/* Exiting Layer (previous slide going away) */}
-      {prevSrc && isAnimating && (
-        <div className={`carousel-slide-layer ${exitClass}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={prevSrc}
-            alt={`${altText} - Foto ${(prevIndex ?? 0) + 1}`}
-            loading="lazy"
-          />
-        </div>
-      )}
-
-      {/* Entering Layer (current slide coming in) */}
-      <div className={`carousel-slide-layer ${isAnimating ? enterClass : ''}`} style={{ zIndex: isAnimating ? 2 : 1 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={currentSrc}
-          alt={`${altText} - Foto ${currentIndex + 1}`}
-          loading="lazy"
-        />
+      {/* ── Sliding Strip ─────────────────────────────────────────────── */}
+      <div
+        className="carousel-strip"
+        style={{ transform: `translateX(${translateX}%)` }}
+        aria-live="polite"
+      >
+        {images.map((src, idx) => {
+          const imgSrc = uploadService.getImageUrl(src) || src;
+          return (
+            <div
+              key={idx}
+              className={`carousel-slide ${idx === currentIndex ? 'active' : ''}`}
+              aria-hidden={idx !== currentIndex}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`Slide ${idx + 1} of ${total}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imgSrc}
+                alt={`${altText} — Foto ${idx + 1}`}
+                loading={idx === 0 ? 'eager' : 'lazy'}
+              />
+            </div>
+          );
+        })}
       </div>
 
-      {/* Slide Badge Pill (Top-Right: "1/3") */}
+      {/* ── Counter Badge (top-right) ─────────────────────────────────── */}
       <div style={styles.counterBadge}>
         <span>{currentIndex + 1} / {total}</span>
       </div>
 
-      {/* Left Navigation Arrow */}
+      {/* ── Left Nav Arrow ───────────────────────────────────────────── */}
       <button
         type="button"
         className="ig-carousel-btn ig-carousel-prev"
@@ -420,21 +327,13 @@ export function ImageCarousel({
         aria-label="Foto sebelumnya"
         title="Foto sebelumnya"
       >
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#1c1e21"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="15 18 9 12 15 6"></polyline>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+          stroke="#1c1e21" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
         </svg>
       </button>
 
-      {/* Right Navigation Arrow */}
+      {/* ── Right Nav Arrow ──────────────────────────────────────────── */}
       <button
         type="button"
         className="ig-carousel-btn ig-carousel-next"
@@ -442,50 +341,51 @@ export function ImageCarousel({
         aria-label="Foto selanjutnya"
         title="Foto selanjutnya"
       >
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#1c1e21"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="9 18 15 12 9 6"></polyline>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+          stroke="#1c1e21" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
         </svg>
       </button>
 
-      {/* Bottom Dots Indicator */}
+      {/* ── Dot Indicators (bottom) ──────────────────────────────────── */}
       <div style={styles.dotsContainer}>
         {images.map((_, idx) => (
           <button
             key={idx}
             type="button"
             className={`ig-carousel-dot ${idx === currentIndex ? 'active' : ''}`}
-            onClick={(e) => handleDotClick(idx, e)}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              navigateTo(idx);
+            }}
             aria-label={`Buka slide ${idx + 1}`}
           />
         ))}
+      </div>
+
+      {/* ── Bottom Progress Bar ──────────────────────────────────────── */}
+      <div className="ig-progress-bar-track">
+        <div
+          className="ig-progress-bar-fill"
+          style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
+        />
       </div>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  carouselContainer: {
+  outerWrap: {
     position: 'relative',
     width: '100%',
     borderRadius: 'var(--radius-md, 12px)',
     overflow: 'hidden',
     backgroundColor: '#0c0d12',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
     userSelect: 'none',
     outline: 'none',
   },
-  image: {
+  slideImg: {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
@@ -510,7 +410,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: '12px',
+    bottom: '14px',
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',

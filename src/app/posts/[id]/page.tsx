@@ -1,12 +1,22 @@
 "use client";
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState, useCallback, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
 import { postService, commentService, activityService, bookmarkService } from '@/services';
-import { Navbar, Toast, PostDetailCard, CommentForm, CommentList, UserProfileModal, LeftNavSidebar } from '@/components';
-import { PostDetailResponseData } from '@/types';
+import { CommentPagedResponse } from '@/services/comment.service';
+import {
+  Navbar,
+  Toast,
+  PostDetailCard,
+  CommentForm,
+  CommentList,
+  UserProfileModal,
+  LeftNavSidebar,
+} from '@/components';
+import { PostDetailResponseData, Comment } from '@/types';
+import { ReplyTarget } from '@/components/post/CommentList';
 
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -14,20 +24,38 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const router = useRouter();
   const { user } = useAuth();
 
+  // ── Post data ─────────────────────────────────────────────────────────────
   const [postData, setPostData] = useState<PostDetailResponseData | null>(null);
   const [likeCount, setLikeCount] = useState<number | null>(null);
-  const [commentCount, setCommentCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+  const [isHeartAnimating, setIsHeartAnimating] = useState(false);
 
-  // Comment state
-  const [commentLoading, setCommentLoading] = useState(false);
-  const [commentError, setCommentError] = useState('');
+  // ── Comment state ─────────────────────────────────────────────────────────
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentPage, setCommentPage] = useState(1);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [commentFormLoading, setCommentFormLoading] = useState(false);
+  const [commentFormError, setCommentFormError] = useState('');
 
-  // User Profile Modal state
+  // ── Reply state ───────────────────────────────────────────────────────────
+  const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
+
+  // ── User Profile Modal ────────────────────────────────────────────────────
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
   const [targetUsername, setTargetUsername] = useState<string | undefined>(undefined);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2400);
+  }, []);
 
   const handleOpenUserProfile = (userId: number, username?: string) => {
     setTargetUserId(userId);
@@ -35,23 +63,42 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     setIsUserProfileOpen(true);
   };
 
-  // Toast & Animation
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isHeartAnimating, setIsHeartAnimating] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  // ── Fetch comments from dedicated endpoint ────────────────────────────────
+  const fetchComments = useCallback(
+    async (page: number, append = false) => {
+      setCommentsLoading(true);
+      try {
+        const res: CommentPagedResponse = await commentService.getComments(postId, page, 10);
+        const newComments = res.data ?? [];
+        setComments((prev) => {
+          const merged = append
+            ? [...prev, ...newComments.filter((c) => !prev.some((p) => p.id === c.id))]
+            : newComments;
+          return [...merged].sort((a, b) => {
+            const timeA = new Date(a.created_at).getTime() || a.id;
+            const timeB = new Date(b.created_at).getTime() || b.id;
+            return timeB - timeA;
+          });
+        });
+        const totalPages = res.pagination?.total_page ?? 1;
+        setHasMoreComments(page < totalPages);
+        setCommentPage(page);
+      } catch {
+        // Silently fall back to comments embedded in the post response
+      } finally {
+        setCommentsLoading(false);
+      }
+    },
+    [postId],
+  );
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2400);
-  };
-
-  // Initial load using Modul 7 like-count and comment-count endpoints
+  // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     let ignore = false;
 
     async function loadPost() {
       try {
-        const [postRes, likeRes, commentRes] = await Promise.allSettled([
+        const [postRes, likeRes, commentCountRes] = await Promise.allSettled([
           postService.getPostById(postId),
           postService.getLikeCount(postId),
           postService.getCommentCount(postId),
@@ -70,13 +117,19 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           if (likeRes.status === 'fulfilled' && likeRes.value?.data?.like_count !== undefined) {
             setLikeCount(likeRes.value.data.like_count);
           }
-          if (commentRes.status === 'fulfilled' && commentRes.value?.data?.comment_count !== undefined) {
-            setCommentCount(commentRes.value.data.comment_count);
+
+          if (
+            commentCountRes.status === 'fulfilled' &&
+            commentCountRes.value?.data?.comment_count !== undefined
+          ) {
+            setCommentCount(commentCountRes.value.data.comment_count);
           }
         }
       } catch (err: unknown) {
         if (!ignore) {
-          setError(err instanceof Error ? err.message : 'Gagal memuat cerita. Silakan refresh halaman.');
+          setError(
+            err instanceof Error ? err.message : 'Gagal memuat cerita. Silakan refresh halaman.',
+          );
         }
       } finally {
         if (!ignore) {
@@ -86,32 +139,17 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     loadPost();
-
-    return () => {
-      ignore = true;
-    };
+    return () => { ignore = true; };
   }, [postId]);
 
-  const refreshPost = async () => {
-    try {
-      const [res, countRes] = await Promise.allSettled([
-        postService.getPostById(postId),
-        postService.getCommentCount(postId),
-      ]);
-      if (res.status === 'fulfilled' && res.value?.data) {
-        setPostData(res.value.data);
-        if (res.value.data.detail_post.is_saved !== undefined) {
-          setIsSaved(Boolean(res.value.data.detail_post.is_saved));
-        }
-      }
-      if (countRes.status === 'fulfilled' && countRes.value?.data?.comment_count !== undefined) {
-        setCommentCount(countRes.value.data.comment_count);
-      }
-    } catch {
-      // ignore
+  // ── Fetch comments after post loads ──────────────────────────────────────
+  useEffect(() => {
+    if (!loading && postData) {
+      fetchComments(1, false);
     }
-  };
+  }, [loading, postData, fetchComments]);
 
+  // ── Like ──────────────────────────────────────────────────────────────────
   const handleLikeToggle = async () => {
     if (!postData) return;
     const currentLiked = postData.detail_post.is_liked;
@@ -123,37 +161,34 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       setTimeout(() => setIsHeartAnimating(false), 400);
     }
 
-    setLikeCount(prev => prev !== null ? Math.max(0, prev + likeDiff) : postData.liked_count + likeDiff);
-
+    setLikeCount((prev) =>
+      prev !== null ? Math.max(0, prev + likeDiff) : postData.liked_count + likeDiff,
+    );
     setPostData({
       ...postData,
-      detail_post: {
-        ...postData.detail_post,
-        is_liked: updatedIsLiked,
-      },
+      detail_post: { ...postData.detail_post, is_liked: updatedIsLiked },
       liked_count: postData.liked_count + likeDiff,
     });
 
     try {
       await activityService.toggleLike(postId, updatedIsLiked);
     } catch {
-      setLikeCount(prev => prev !== null ? Math.max(0, prev - likeDiff) : postData.liked_count);
+      setLikeCount((prev) =>
+        prev !== null ? Math.max(0, prev - likeDiff) : postData.liked_count,
+      );
       setPostData({
         ...postData,
-        detail_post: {
-          ...postData.detail_post,
-          is_liked: currentLiked,
-        },
+        detail_post: { ...postData.detail_post, is_liked: currentLiked },
         liked_count: postData.liked_count,
       });
       showToast('Gagal mengubah status suka. Silakan coba lagi.');
     }
   };
 
+  // ── Bookmark ──────────────────────────────────────────────────────────────
   const handleBookmarkToggle = async () => {
     const nextState = !isSaved;
     setIsSaved(nextState);
-
     try {
       await bookmarkService.toggleBookmark(postId, nextState);
       showToast(nextState ? 'Disimpan ke koleksi Anda' : 'Dihapus dari koleksi tersimpan');
@@ -161,64 +196,107 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         const numId = Number(postId);
         const saved = localStorage.getItem('saved_posts');
         const ids: number[] = saved ? JSON.parse(saved) : [];
-        const nextIds = nextState ? [...ids.filter(id => id !== numId), numId] : ids.filter(id => id !== numId);
+        const nextIds = nextState
+          ? [...ids.filter((id) => id !== numId), numId]
+          : ids.filter((id) => id !== numId);
         localStorage.setItem('saved_posts', JSON.stringify(nextIds));
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     } catch {
       setIsSaved(!nextState);
       showToast('Gagal mengubah status simpan. Silakan coba lagi.');
     }
   };
 
-
+  // ── Share ─────────────────────────────────────────────────────────────────
   const handleShare = async () => {
     if (typeof window !== 'undefined' && navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(window.location.href);
         showToast('Link berhasil disalin ke clipboard!');
         return;
-      } catch {
-        // ignore
-      }
+      } catch { /* fallthrough */ }
     }
     showToast('URL: ' + window.location.href);
   };
 
+  // ── Delete post ───────────────────────────────────────────────────────────
   const handleDeletePost = async () => {
     try {
       await postService.deletePost(postId);
       showToast('Postingan berhasil dihapus.');
-      setTimeout(() => {
-        router.push('/');
-      }, 700);
+      setTimeout(() => router.push('/'), 700);
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Gagal menghapus cerita.');
     }
   };
 
+  // ── Create comment or reply ───────────────────────────────────────────────
   const handleCommentSubmit = async (content: string) => {
-    setCommentLoading(true);
-    setCommentError('');
+    setCommentFormLoading(true);
+    setCommentFormError('');
 
     try {
-      await commentService.createComment(postId, content);
-      showToast('Komentar berhasil dikirim!');
-      setCommentCount(prev => (prev !== null ? prev + 1 : 1));
-      await refreshPost();
+      if (replyTarget) {
+        // REPLY mode: POST /comments/replies/:commentId
+        await commentService.createReply(
+          replyTarget.commentId,
+          content,
+          replyTarget.replyToUserId,
+        );
+        showToast('Balasan berhasil dikirim!');
+        setReplyTarget(null);
+
+        // Refresh the comment that received the reply so its replies_count updates
+        await fetchComments(1, false);
+      } else {
+        // ROOT COMMENT mode: POST /posts/comments/:postId
+        await commentService.createComment(postId, content);
+        showToast('Komentar berhasil dikirim!');
+
+        // Optimistically bump the count then refresh
+        setCommentCount((prev) => (prev !== null ? prev + 1 : 1));
+        await fetchComments(1, false);
+
+        // Refresh the actual count from the server
+        try {
+          const countRes = await postService.getCommentCount(postId);
+          if (countRes.data?.comment_count !== undefined) {
+            setCommentCount(countRes.data.comment_count);
+          }
+        } catch { /* ignore */ }
+      }
     } catch (err: unknown) {
-      setCommentError(err instanceof Error ? err.message : 'Gagal mengirim komentar. Silakan coba lagi.');
+      setCommentFormError(
+        err instanceof Error ? err.message : 'Gagal mengirim. Silakan coba lagi.',
+      );
     } finally {
-      setCommentLoading(false);
+      setCommentFormLoading(false);
     }
   };
 
+  // ── Comment CRUD callbacks ────────────────────────────────────────────────
+  const handleCommentDeleted = useCallback((commentId: number) => {
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setCommentCount((prev) => (prev !== null ? Math.max(0, prev - 1) : null));
+  }, []);
+
+  const handleCommentUpdated = useCallback((commentId: number, newContent: string) => {
+    setComments((prev) =>
+      prev.map((c) => (c.id === commentId ? { ...c, comment_content: newContent } : c)),
+    );
+  }, []);
+
+  // ── Load more comments ────────────────────────────────────────────────────
+  const handleLoadMoreComments = () => {
+    fetchComments(commentPage + 1, true);
+  };
+
+  // ── Loading / Error states ─────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.spinner} className="spinner"></div>
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>Loading story & comments...</p>
+        <div style={styles.spinner} className="spinner" />
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>Memuat cerita...</p>
       </div>
     );
   }
@@ -233,14 +311,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             {error || 'This post may have been removed or is unavailable.'}
           </p>
           <Link href="/" className="btn btn-primary" style={{ marginTop: '1rem' }}>
-            &larr; Back to Feed
+            ← Back to Feed
           </Link>
         </div>
       </div>
     );
   }
 
-  const { detail_post, liked_count, comments } = postData;
+  const { detail_post, liked_count } = postData;
+  const displayCommentCount = commentCount ?? comments.length;
 
   return (
     <div style={styles.pageContainer} className="animate-fade-in has-left-sidebar">
@@ -248,22 +327,31 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Left Navigation Sidebar */}
       <LeftNavSidebar
-        onHomeClick={() => window.location.href = '/'}
+        onHomeClick={() => (window.location.href = '/')}
         onToast={showToast}
       />
 
       <Navbar
         showBackToFeed
-        onThemeToggled={theme => showToast(`Switched to ${theme} mode`)}
+        onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)}
       />
 
       <main style={styles.main} className="container">
-        {/* Navigation Breadcrumb */}
+        {/* Breadcrumb */}
         <div style={styles.breadcrumbBar}>
           <Link href="/" style={styles.backBtn}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
             </svg>
             <span>Back to Feed</span>
           </Link>
@@ -273,7 +361,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <PostDetailCard
           post={detail_post}
           likedCount={likeCount ?? liked_count}
-          commentCount={commentCount ?? (comments ? comments.length : 0)}
+          commentCount={displayCommentCount}
           isSaved={isSaved}
           isHeartAnimating={isHeartAnimating}
           currentUserId={user?.id}
@@ -288,29 +376,77 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <section style={styles.commentsSection}>
           <div style={styles.sectionHeader}>
             <h3 style={styles.sectionTitle}>
-              Comments <span style={styles.commentCountBadge}>({commentCount ?? (comments ? comments.length : 0)})</span>
+              Komentar{' '}
+              <span style={styles.commentCountBadge}>({displayCommentCount})</span>
             </h3>
             <span style={{ fontSize: '0.85rem', color: 'var(--fg-subtle)' }}>
-              Join the discussion respectfully
+              Berdiskusi dengan sopan
             </span>
           </div>
 
-          {/* Comment Form Component */}
+          {/* Comment / Reply Form */}
           <CommentForm
             onSubmit={handleCommentSubmit}
-            loading={commentLoading}
-            error={commentError}
+            loading={commentFormLoading}
+            error={commentFormError}
+            replyTarget={replyTarget}
+            onCancelReply={() => setReplyTarget(null)}
           />
 
-          {/* Comments List Component */}
-          <CommentList
-            comments={comments}
-            onUserClick={handleOpenUserProfile}
-          />
+          {/* Comments List */}
+          {commentsLoading && comments.length === 0 ? (
+            <div style={styles.commentsLoading}>
+              <div style={styles.spinnerSm} className="spinner" />
+              <span style={{ fontSize: '0.9rem', color: 'var(--fg-muted)' }}>
+                Memuat komentar...
+              </span>
+            </div>
+          ) : (
+            <CommentList
+              comments={comments}
+              currentUserId={user?.id}
+              postOwnerId={detail_post.user_id}
+              onUserClick={handleOpenUserProfile}
+              onReply={(target) => setReplyTarget(target)}
+              onToast={showToast}
+              onCommentDeleted={handleCommentDeleted}
+              onCommentUpdated={handleCommentUpdated}
+            />
+          )}
+
+          {/* Load More Comments */}
+          {hasMoreComments && !commentsLoading && (
+            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  padding: '0.6rem 1.8rem',
+                  background: 'var(--btn-secondary-bg)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--fg-muted)',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                }}
+                onClick={handleLoadMoreComments}
+              >
+                Tampilkan lebih banyak komentar
+              </button>
+            </div>
+          )}
+
+          {commentsLoading && comments.length > 0 && (
+            <div style={{ textAlign: 'center', padding: '0.75rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--fg-subtle)' }}>
+                Memuat...
+              </span>
+            </div>
+          )}
         </section>
       </main>
 
-      {/* User Profile Preview Modal (GET /accounts/profile/:id) */}
+      {/* User Profile Modal */}
       <UserProfileModal
         isOpen={isUserProfileOpen}
         userId={targetUserId}
@@ -355,7 +491,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: '3rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.5rem',
+    gap: '1.25rem',
   },
   sectionHeader: {
     display: 'flex',
@@ -374,6 +510,13 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--ig-primary)',
     fontWeight: 800,
   },
+  commentsLoading: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '1.5rem',
+    justifyContent: 'center',
+  },
   loadingContainer: {
     minHeight: '100vh',
     display: 'flex',
@@ -387,6 +530,13 @@ const styles: Record<string, React.CSSProperties> = {
     height: '45px',
     borderRadius: '50%',
     border: '3px solid var(--border)',
+    borderTopColor: 'var(--ig-primary)',
+  },
+  spinnerSm: {
+    width: '22px',
+    height: '22px',
+    borderRadius: '50%',
+    border: '2.5px solid var(--border)',
     borderTopColor: 'var(--ig-primary)',
   },
   errorContainer: {

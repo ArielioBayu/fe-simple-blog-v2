@@ -28,6 +28,8 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
   const [content, setContent] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [attachedMediaList, setAttachedMediaList] = useState<AttachedMediaItem[]>([]);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -167,6 +169,59 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
 
   const handleRemoveMedia = (index: number) => {
     setAttachedMediaList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMoveMedia = (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= attachedMediaList.length ||
+      toIndex >= attachedMediaList.length
+    ) {
+      return;
+    }
+    setAttachedMediaList((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, movedItem);
+      return updated;
+    });
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== index) {
+      setDragOverIdx(index);
+    }
+  };
+
+  const handleDragLeave = (_e: React.DragEvent, index: number) => {
+    if (dragOverIdx === index) {
+      setDragOverIdx(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const sourceIndex = draggedIdx ?? Number(e.dataTransfer.getData('text/plain'));
+    if (typeof sourceIndex === 'number' && !isNaN(sourceIndex) && sourceIndex !== targetIndex) {
+      handleMoveMedia(sourceIndex, targetIndex);
+    }
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -435,30 +490,87 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                   Foto Terlampir ({attachedMediaList.length}/10)
                 </span>
                 <span style={styles.multiPreviewSubtitle}>
-                  Foto 1 otomatis menjadi foto sampul
+                  Foto 1 otomatis menjadi foto sampul • Drag tombol foto untuk atur urutan
                 </span>
               </div>
               <div style={styles.multiPreviewGrid}>
                 {attachedMediaList.map((media, idx) => {
                   const url = uploadService.getImageUrl(media.filePath);
+                  const isBeingDragged = draggedIdx === idx;
+                  const isDragTarget = dragOverIdx === idx && draggedIdx !== idx;
+
                   return (
-                    <div key={idx} style={styles.multiPreviewItem}>
+                    <div
+                      key={media.filePath ? `${media.filePath}-${media.uploadId ?? idx}` : idx}
+                      style={{
+                        ...styles.multiPreviewItem,
+                        opacity: isBeingDragged ? 0.4 : 1,
+                        transform: isDragTarget ? 'scale(1.05)' : isBeingDragged ? 'scale(0.95)' : 'none',
+                        borderColor: isDragTarget
+                          ? 'var(--social-blue, #0095F6)'
+                          : isBeingDragged
+                          ? 'var(--social-blue, #0095F6)'
+                          : 'var(--border)',
+                        boxShadow: isDragTarget
+                          ? '0 0 12px rgba(0, 149, 246, 0.45)'
+                          : 'none',
+                      }}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDragLeave={(e) => handleDragLeave(e, idx)}
+                      onDrop={(e) => handleDrop(e, idx)}
+                      onDragEnd={handleDragEnd}
+                      title={`Foto ${idx + 1} - Drag untuk atur urutan`}
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url || ''} alt={`Foto ${idx + 1}`} style={styles.multiPreviewImg} />
+                      <img
+                        src={url || ''}
+                        alt={`Foto ${idx + 1}`}
+                        style={styles.multiPreviewImg}
+                        draggable={false}
+                      />
+
+                      {/* Drag Handle Button on Top-Left */}
+                      <div
+                        style={styles.dragHandleBtn}
+                        title="Tahan dan geser (drag) untuk memindahkan urutan"
+                        aria-label="Tahan dan geser untuk memindahkan urutan"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="8" cy="5" r="2" />
+                          <circle cx="16" cy="5" r="2" />
+                          <circle cx="8" cy="12" r="2" />
+                          <circle cx="16" cy="12" r="2" />
+                          <circle cx="8" cy="19" r="2" />
+                          <circle cx="16" cy="19" r="2" />
+                        </svg>
+                      </div>
+
+                      {/* Remove Button on Top-Right */}
+                      <button
+                        type="button"
+                        style={styles.removeImageBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveMedia(idx);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        title={`Hapus foto ${idx + 1}`}
+                        aria-label={`Hapus foto ${idx + 1}`}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+
+                      {/* Order / Cover Badge on Bottom-Left */}
                       {idx === 0 ? (
                         <span style={styles.coverBadge}>Sampul</span>
                       ) : (
                         <span style={styles.orderBadge}>{idx + 1}</span>
                       )}
-                      <button
-                        type="button"
-                        style={styles.removeImageBtn}
-                        onClick={() => handleRemoveMedia(idx)}
-                        title={`Hapus foto ${idx + 1}`}
-                        aria-label={`Hapus foto ${idx + 1}`}
-                      >
-                        &times;
-                      </button>
                     </div>
                   );
                 })}
@@ -764,6 +876,27 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     border: '1px solid var(--border)',
     backgroundColor: 'var(--bg-card)',
+    cursor: 'grab',
+    userSelect: 'none',
+    transition: 'transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, border-color 0.18s ease',
+  },
+  dragHandleBtn: {
+    position: 'absolute',
+    top: '4px',
+    left: '4px',
+    background: 'rgba(0, 0, 0, 0.72)',
+    color: '#fff',
+    borderRadius: '4px',
+    width: '20px',
+    height: '20px',
+    cursor: 'grab',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+    transition: 'background-color 0.15s ease',
   },
   multiPreviewImg: {
     width: '100%',
@@ -819,16 +952,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff',
     border: 'none',
     borderRadius: '50%',
-    width: '22px',
-    height: '22px',
-    fontSize: '1rem',
+    width: '18px',
+    height: '18px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    lineHeight: 1,
+    padding: 0,
     zIndex: 2,
-    transition: 'background-color 0.15s ease',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+    transition: 'background-color 0.15s ease, transform 0.1s ease',
   },
   gallerySelectedCheck: {
     position: 'absolute',

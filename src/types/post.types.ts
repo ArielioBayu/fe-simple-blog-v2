@@ -54,7 +54,8 @@ export interface PostDetail {
 export interface PostDetailResponseData {
   detail_post: PostDetail;
   liked_count: number;
-  comments: Comment[] | null;
+  /** Legacy: comments may be embedded in the post detail response. Prefer fetching via commentService.getComments() */
+  comments?: Comment[] | null;
 }
 
 export interface PostLikeCountData {
