@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context';
 import { uploadService } from '@/services';
@@ -24,9 +24,19 @@ export function Navbar({
   const { user, logout } = useAuth();
   const username = user?.username || '';
   const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 15);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <nav style={styles.nav} className="glass">
+    <nav className={`app-navbar ${isScrolled ? 'scrolled' : ''}`}>
       <div style={styles.navContent} className="container">
         {/* Brand Logo */}
         <Link href="/" style={styles.brandLogo} onClick={onHomeClick}>
@@ -127,15 +137,6 @@ export function Navbar({
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  nav: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 50,
-    borderRadius: 0,
-    borderTop: 'none',
-    borderLeft: 'none',
-    borderRight: 'none',
-  },
   navContent: {
     display: 'flex',
     alignItems: 'center',

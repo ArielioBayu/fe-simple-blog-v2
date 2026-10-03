@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useTheme } from '@/context';
-import { SessionExpiredModal, OtpVerificationModal } from '@/components/common';
+import { SessionExpiredModal, OtpVerificationModal, AmbientAuroraBackground } from '@/components/common';
 
 /**
  * Component that reads useSearchParams() — wrapped in <Suspense>
@@ -174,19 +174,11 @@ export default function LoginPage() {
   return (
     <div style={{
       ...styles.pageWrapper,
-      background: isDark
-        ? '#000000'
-        : 'radial-gradient(ellipse 85% 60% at 8% 12%, rgba(236, 72, 153, 0.14) 0%, transparent 55%), radial-gradient(ellipse 70% 55% at 92% 18%, rgba(99, 102, 241, 0.12) 0%, transparent 50%), radial-gradient(ellipse 80% 65% at 50% 95%, rgba(255, 90, 54, 0.10) 0%, transparent 58%), radial-gradient(ellipse 60% 50% at 85% 85%, rgba(14, 165, 233, 0.10) 0%, transparent 52%), linear-gradient(150deg, #FFFFFF 0%, #FFF9F7 28%, #FAF8FF 65%, #F0F7FF 100%)',
+      background: isDark ? '#070913' : '#F8FAFC',
       color: isDark ? '#F5F5F5' : '#111827',
     }}>
-      {/* Subtle Ambient Decorative Glow Orbs (Light Mode Only) */}
-      {!isDark && (
-        <div style={styles.ambientGlowContainer} aria-hidden="true">
-          <div style={styles.glowBlobTopLeft} />
-          <div style={styles.glowBlobBottomLeft} />
-          <div style={styles.glowBlobRight} />
-        </div>
-      )}
+      {/* Option 2: Ambient Aurora Wave / Fluid Gradient Orbs Background */}
+      <AmbientAuroraBackground />
 
 
       {/* Unified Centered Stage: Locks Logo, Mode Switch, Hero, Divider, and Form together */}
@@ -322,12 +314,12 @@ export default function LoginPage() {
           >
             <div style={{
               ...styles.loginBox,
-              backgroundColor: isDark ? '#121212' : 'rgba(255, 255, 255, 0.88)',
-              backdropFilter: isDark ? 'none' : 'blur(20px)',
-              WebkitBackdropFilter: isDark ? 'none' : 'blur(20px)',
-              borderColor: isDark ? '#262626' : 'rgba(255, 255, 255, 0.95)',
+              backgroundColor: isDark ? 'rgba(18, 18, 18, 0.82)' : 'rgba(255, 255, 255, 0.88)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.95)',
               boxShadow: isDark
-                ? '0 16px 40px rgba(0, 0, 0, 0.55)'
+                ? '0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08)'
                 : '0 24px 48px -12px rgba(99, 102, 241, 0.09), 0 8px 24px -4px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(226, 232, 240, 0.85)',
             }}>
             <h2 style={{

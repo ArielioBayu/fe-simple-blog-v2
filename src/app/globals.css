@@ -817,7 +817,34 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   Left Navigation Sidebar (Instagram-Style Symmetrical & Seamless Feed Color)
+   Top Application Navbar (Instagram-Style Seamless Feed Integration)
+   ========================================================================== */
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 1px solid transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  box-shadow: none;
+  transition: background-color 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.app-navbar.scrolled {
+  background-color: var(--nav-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   Left Navigation Sidebar (Instagram-Style Seamless Feed Integration)
    ========================================================================== */
 
 .left-nav-sidebar {
@@ -826,8 +853,10 @@ select:focus-visible {
   bottom: 0;
   left: 0;
   width: 76px;
-  background-color: var(--bg-main); /* Match feed background */
-  border-right: 1px solid var(--border);
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-right: none;
   z-index: 920;
   display: flex;
   flex-direction: column;
@@ -836,13 +865,17 @@ select:focus-visible {
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
-  transition: width 0.32s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: width 0.32s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.32s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s ease;
   will-change: width, box-shadow;
 }
 
 .left-nav-sidebar:hover {
   width: 230px;
-  box-shadow: 12px 0 36px -4px rgba(0, 0, 0, 0.25);
+  background-color: var(--modal-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border);
+  box-shadow: 12px 0 36px -4px rgba(0, 0, 0, 0.15);
 }
 
 /* Menu Container - Centered to the marked middle area */
@@ -871,13 +904,12 @@ select:focus-visible {
   text-align: left;
   font-family: var(--font-sans);
   position: relative;
-  transition: background-color 0.2s ease, color 0.18s ease, transform 0.18s ease;
+  transition: background-color 0.2s ease, color 0.18s ease;
   user-select: none;
 }
 
 .left-nav-item:hover {
   background-color: var(--btn-secondary-hover);
-  transform: translateX(2px);
 }
 
 .left-nav-item:active {
@@ -992,14 +1024,14 @@ select:focus-visible {
   line-height: 1;
 }
 
-/* Symmetrical Text Label */
+/* Symmetrical Text Label - with safe line-height to prevent cutting descenders ('g', 'p', 'y') */
 .left-nav-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.95rem;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.35;
   letter-spacing: -0.01em;
   opacity: 0;
   transform: translateX(-6px);
@@ -1007,6 +1039,7 @@ select:focus-visible {
   pointer-events: none;
   visibility: hidden;
   transition: opacity 0.2s ease, transform 0.2s ease, max-width 0.28s ease, visibility 0.2s;
+  padding-bottom: 2px;
 }
 
 .left-nav-sidebar:hover .left-nav-label {
@@ -1125,7 +1158,7 @@ select:focus-visible {
 
 @media (min-width: 769px) {
   .has-left-sidebar {
-    padding-left: 72px !important;
+    padding-left: 76px !important;
     transition: padding-left 0.2s ease;
   }
 }

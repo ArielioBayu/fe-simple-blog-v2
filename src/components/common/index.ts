@@ -11,3 +11,5 @@ export * from './PostMenuDropdown';
 export * from './DeleteConfirmModal';
 export * from './ImageCarousel';
 export * from './CommentDrawer';
+export * from './Background3D';
+export * from './AmbientAuroraBackground';

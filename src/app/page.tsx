@@ -18,6 +18,7 @@ import {
   MobileBottomNav,
   LeftNavSidebar,
   CommentDrawer,
+  Background3D,
 } from '@/components';
 import { Post, CreatePostRequest } from '@/types';
 
@@ -282,6 +283,9 @@ export default function FeedPage() {
 
   return (
     <div style={styles.appContainer} className="animate-fade-in feed-page-wrapper has-left-sidebar">
+      {/* Option 1: Interactive Floating Micro-Stardust Ambient Background */}
+      <Background3D />
+
       <Toast message={toastMessage} />
 
       {/* Left Navigation Sidebar */}
@@ -313,7 +317,7 @@ export default function FeedPage() {
             <div style={styles.feedHeader}>
               <div>
                 <h2 style={styles.feedTitle}>
-                  {activeTag === 'all' ? 'Feed Post' : `#${activeTag}`}
+                  {activeTag === 'all' ? 'Feed Posts' : `#${activeTag}`}
                 </h2>
                 <p style={styles.feedSubtitle}>
                   {activeTag === 'all'
@@ -485,6 +489,8 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     paddingTop: '1.75rem',
     paddingBottom: '4rem',
+    position: 'relative',
+    zIndex: 1,
   },
   layoutGrid: {
     display: 'grid',
