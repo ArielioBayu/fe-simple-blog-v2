@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
-import { authService, postService, uploadService, bookmarkService } from '@/services';
+import { authService, postService, uploadService, bookmarkService, followService } from '@/services';
 import { Post, UserProfile } from '@/types';
-import { Navbar, Toast, EditProfileModal, LeftNavSidebar } from '@/components';
+import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, FollowRequestsModal } from '@/components';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -18,6 +18,9 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'stories' | 'saved'>('stories');
   const [loading, setLoading] = useState(true);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [followListModalTab, setFollowListModalTab] = useState<'followers' | 'following' | null>(null);
+  const [isFollowRequestsOpen, setIsFollowRequestsOpen] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
 
@@ -79,6 +82,21 @@ export default function ProfilePage() {
           // ignore
         }
 
+        // 4. If account is private, fetch pending follow requests count
+        try {
+          if (profileData?.is_private || authUser.is_private) {
+            const reqRes = await followService.getFollowRequests(1, 10);
+            const count =
+              (reqRes.pagination as { total_data?: number })?.total_data ??
+              (Array.isArray(reqRes.data) ? reqRes.data.length : 0);
+            if (!ignore) {
+              setPendingRequestsCount(count);
+            }
+          }
+        } catch {
+          // ignore
+        }
+
       } catch (err: unknown) {
         if (!ignore) {
           showToast(err instanceof Error ? err.message : 'Gagal memuat profil');
@@ -118,6 +136,17 @@ export default function ProfilePage() {
     const fresh = await authService.getUserProfile();
     if (fresh) {
       setProfile(fresh);
+      if (fresh.is_private) {
+        try {
+          const reqRes = await followService.getFollowRequests(1, 10);
+          const count =
+            (reqRes.pagination as { total_data?: number })?.total_data ??
+            (Array.isArray(reqRes.data) ? reqRes.data.length : 0);
+          setPendingRequestsCount(count);
+        } catch {
+          // ignore
+        }
+      }
     }
   };
 
@@ -136,6 +165,8 @@ export default function ProfilePage() {
     : '2026';
 
   const storiesCount = currentUser?.stats?.stories_count ?? userPosts.length;
+  const followersCount = currentUser?.stats?.followers_count ?? 0;
+  const followingCount = currentUser?.stats?.following_count ?? 0;
   const likesCount = currentUser?.stats?.likes_count ?? 0;
   const savedCount = currentUser?.stats?.saved_count ?? savedPosts.length;
 
@@ -216,6 +247,28 @@ export default function ProfilePage() {
 
               {/* Action Buttons Row */}
               <div style={styles.topActionsRow}>
+                {currentUser?.is_private && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{
+                      ...styles.actionBtn,
+                      borderColor: pendingRequestsCount > 0 ? 'var(--brand-coral)' : undefined,
+                      color: pendingRequestsCount > 0 ? 'var(--brand-coral)' : undefined,
+                    }}
+                    onClick={() => setIsFollowRequestsOpen(true)}
+                    title="Permintaan Mengikuti"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="8.5" cy="7" r="4"></circle>
+                      <line x1="20" y1="8" x2="20" y2="14"></line>
+                      <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                    <span>Permintaan {pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -265,8 +318,26 @@ export default function ProfilePage() {
 
             {/* Profile Info Header */}
             <div style={styles.userInfoSection}>
-              <div style={styles.usernameTitleRow}>
+              <div style={{ ...styles.usernameTitleRow, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h1 style={styles.profileUsername}>@{username}</h1>
+                {currentUser?.is_private && (
+                  <span
+                    title="Akun Bersifat Privat"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 10px',
+                      borderRadius: '9999px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      color: 'var(--brand-coral, #FF5A36)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    🔒 Privat
+                  </span>
+                )}
               </div>
 
               {currentUser?.email && (
@@ -286,25 +357,47 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Engagement Metrics Bar */}
+            {/* Engagement Metrics Bar (5 stats: stories, followers, following, likes, saved) */}
             <div style={styles.metricsBar}>
               <div style={styles.metricCard}>
                 <strong style={styles.metricNumber}>{storiesCount}</strong>
-                <span style={styles.metricLabel}>Cerita Diterbitkan</span>
+                <span style={styles.metricLabel}>Cerita</span>
+              </div>
+
+              <div style={styles.metricDivider} />
+
+              <div
+                style={{ ...styles.metricCard, cursor: 'pointer' }}
+                onClick={() => setFollowListModalTab('followers')}
+                title="Lihat Daftar Pengikut"
+              >
+                <strong style={styles.metricNumber}>{followersCount}</strong>
+                <span style={{ ...styles.metricLabel, color: 'var(--social-blue)' }}>Pengikut</span>
+              </div>
+
+              <div style={styles.metricDivider} />
+
+              <div
+                style={{ ...styles.metricCard, cursor: 'pointer' }}
+                onClick={() => setFollowListModalTab('following')}
+                title="Lihat Daftar Mengikuti"
+              >
+                <strong style={styles.metricNumber}>{followingCount}</strong>
+                <span style={{ ...styles.metricLabel, color: 'var(--social-blue)' }}>Mengikuti</span>
               </div>
 
               <div style={styles.metricDivider} />
 
               <div style={styles.metricCard}>
                 <strong style={styles.metricNumber}>{likesCount}</strong>
-                <span style={styles.metricLabel}>Total Suka Diterima</span>
+                <span style={styles.metricLabel}>Total Suka</span>
               </div>
 
               <div style={styles.metricDivider} />
 
               <div style={styles.metricCard}>
                 <strong style={styles.metricNumber}>{savedCount}</strong>
-                <span style={styles.metricLabel}>Cerita Tersimpan</span>
+                <span style={styles.metricLabel}>Tersimpan</span>
               </div>
             </div>
           </div>
@@ -501,6 +594,25 @@ export default function ProfilePage() {
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
         onSuccess={handleProfileUpdated}
+      />
+
+      {/* Followers & Following List Modal */}
+      {followListModalTab && currentUser && (
+        <FollowListModal
+          isOpen={true}
+          onClose={() => setFollowListModalTab(null)}
+          userId={currentUser.id}
+          username={username}
+          initialTab={followListModalTab}
+          onRelationshipChange={handleProfileUpdated}
+        />
+      )}
+
+      {/* Follow Requests Modal for Private Account */}
+      <FollowRequestsModal
+        isOpen={isFollowRequestsOpen}
+        onClose={() => setIsFollowRequestsOpen(false)}
+        onRequestHandled={handleProfileUpdated}
       />
     </div>
   );

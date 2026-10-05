@@ -13,3 +13,5 @@ export * from './ImageCarousel';
 export * from './CommentDrawer';
 export * from './Background3D';
 export * from './AmbientAuroraBackground';
+export * from './FollowListModal';
+export * from './FollowRequestsModal';

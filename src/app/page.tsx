@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context';
-import { postService, activityService, bookmarkService } from '@/services';
+import { postService, activityService, bookmarkService, followService } from '@/services';
 import {
   Navbar,
   Toast,
@@ -27,6 +27,7 @@ export default function FeedPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [feedMode, setFeedMode] = useState<'explore' | 'following'>('explore');
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
   const [hasMore, setHasMore] = useState(true);
@@ -122,9 +123,19 @@ export default function FeedPage() {
 
     async function loadPosts() {
       try {
-        const res = await postService.getAllPosts(page, limit);
+        let res: { data?: Post[] };
+        if (feedMode === 'following') {
+          try {
+            res = (await followService.getFeedPosts<Post[]>(page, limit)) as { data?: Post[] };
+          } catch {
+            res = await postService.getAllPosts(page, limit);
+          }
+        } else {
+          res = await postService.getAllPosts(page, limit);
+        }
+
         if (!ignore) {
-          if (res && res.data) {
+          if (res && res.data && Array.isArray(res.data)) {
             setPosts(res.data);
             setHasMore(res.data.length === limit);
           } else {
@@ -148,14 +159,24 @@ export default function FeedPage() {
     return () => {
       ignore = true;
     };
-  }, [page, limit, user]);
+  }, [page, limit, user, feedMode]);
 
   const refetchFirstPage = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await postService.getAllPosts(1, limit);
-      if (res && res.data) {
+      let res: { data?: Post[] };
+      if (feedMode === 'following') {
+        try {
+          res = (await followService.getFeedPosts<Post[]>(1, limit)) as { data?: Post[] };
+        } catch {
+          res = await postService.getAllPosts(1, limit);
+        }
+      } else {
+        res = await postService.getAllPosts(1, limit);
+      }
+
+      if (res && res.data && Array.isArray(res.data)) {
         setPosts(res.data);
         setHasMore(res.data.length === limit);
       } else {
@@ -316,13 +337,61 @@ export default function FeedPage() {
           <div style={styles.feedColumn}>
             <div style={styles.feedHeader}>
               <div>
-                <h2 style={styles.feedTitle}>
-                  {activeTag === 'all' ? 'Feed Posts' : `#${activeTag}`}
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (feedMode !== 'explore') {
+                        setFeedMode('explore');
+                        setPage(1);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '4px 0',
+                      fontSize: '1.25rem',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-outfit), sans-serif',
+                      color: feedMode === 'explore' ? 'var(--heading-color)' : 'var(--fg-muted)',
+                      borderBottom: feedMode === 'explore' ? '2.5px solid var(--brand-coral, #FF5A36)' : '2.5px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Untuk Anda
+                  </button>
+                  <span style={{ color: 'var(--border-subtle)', margin: '0 4px', fontSize: '0.9rem' }}>•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (feedMode !== 'following') {
+                        setFeedMode('following');
+                        setPage(1);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '4px 0',
+                      fontSize: '1.25rem',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-outfit), sans-serif',
+                      color: feedMode === 'following' ? 'var(--heading-color)' : 'var(--fg-muted)',
+                      borderBottom: feedMode === 'following' ? '2.5px solid var(--brand-coral, #FF5A36)' : '2.5px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Mengikuti
+                  </button>
+                </div>
                 <p style={styles.feedSubtitle}>
-                  {activeTag === 'all'
-                    ? 'Latest posts and articles from the community'
-                    : `Showing articles tagged with #${activeTag}`}
+                  {feedMode === 'explore'
+                    ? (activeTag === 'all'
+                        ? 'Postingan terbaru dan cerita dari seluruh komunitas'
+                        : `Menampilkan artikel dengan tagar #${activeTag}`)
+                    : 'Postingan cerita dari kreator yang Anda ikuti'}
                 </p>
               </div>
 

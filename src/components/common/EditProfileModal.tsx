@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context';
-import { uploadService } from '@/services';
+import { uploadService, followService } from '@/services';
 import { UserProfile } from '@/types';
 
 interface EditProfileModalProps {
@@ -25,6 +25,7 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
   const [bio, setBio] = useState(user?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [bannerUrl, setBannerUrl] = useState(user?.banner_url || '');
+  const [isPrivate, setIsPrivate] = useState<boolean>(Boolean(user?.is_private));
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -79,11 +80,16 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
     setError('');
 
     try {
+      if (isPrivate !== Boolean(user?.is_private)) {
+        await followService.updatePrivacy(isPrivate);
+      }
+
       await updateProfile({
         username: username.trim(),
         bio: bio.trim(),
         avatar_url: avatarUrl.trim(),
         banner_url: bannerUrl.trim(),
+        is_private: isPrivate,
       });
 
       if (onSuccess) onSuccess();
@@ -217,6 +223,73 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
               onChange={(e) => setBannerUrl(e.target.value)}
               placeholder="https://images.unsplash.com/... or relative path"
             />
+          </div>
+
+          {/* Account Privacy Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.9rem 1rem',
+              borderRadius: '14px',
+              backgroundColor: 'var(--bg-main)',
+              border: '1px solid var(--border)',
+              margin: '0.4rem 0 1rem',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingRight: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.95rem' }}>🔒</span>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--heading-color)' }}>
+                  Akun Privat
+                </span>
+              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', lineHeight: 1.4 }}>
+                Jika aktif, hanya orang yang Anda setujui yang dapat melihat cerita dan profil Anda.
+              </span>
+            </div>
+
+            <label
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+                width: '44px',
+                height: '24px',
+                flexShrink: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: isPrivate ? 'var(--brand-coral, #FF5A36)' : 'var(--border-subtle, #CBD5E1)',
+                  borderRadius: '9999px',
+                  transition: '0.25s',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    height: '18px',
+                    width: '18px',
+                    left: isPrivate ? '23px' : '3px',
+                    bottom: '3px',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '50%',
+                    transition: '0.25s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  }}
+                />
+              </span>
+            </label>
           </div>
 
           {/* Actions */}

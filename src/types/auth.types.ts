@@ -43,6 +43,8 @@ export interface UserProfile {
   bio?: string;
   avatar_url?: string;
   banner_url?: string;
+  is_verified?: boolean;
+  is_private?: boolean;
   created_at: string;
   stats?: UserStats;
 }
@@ -54,6 +56,7 @@ export interface UpdateProfileRequest {
   bio?: string;
   avatar_url?: string;
   banner_url?: string;
+  is_private?: boolean;
 }
 
 export interface AuthState {

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth, useTheme } from '@/context';
-import { uploadService } from '@/services';
+import { uploadService, followService } from '@/services';
+import { FollowRequestsModal } from './FollowRequestsModal';
 
 interface LeftNavSidebarProps {
   onHomeClick?: () => void;
@@ -23,6 +24,8 @@ export function LeftNavSidebar({
 
   const [isOthersMenuOpen, setIsOthersMenuOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
+  const [requestCount, setRequestCount] = useState(0);
+  const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
   const othersMenuRef = useRef<HTMLDivElement>(null);
   const othersBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -30,6 +33,23 @@ export function LeftNavSidebar({
   const isProfileActive = pathname === '/profile';
 
   const avatarSrc = user?.avatar_url && !avatarError ? uploadService.getImageUrl(user.avatar_url) : null;
+
+  const refreshRequestsCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await followService.getFollowRequests(1, 10);
+      const count =
+        (res.pagination as { total_data?: number })?.total_data ??
+        (Array.isArray(res.data) ? res.data.length : 0);
+      setRequestCount(count);
+    } catch {
+      // ignore
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshRequestsCount();
+  }, [refreshRequestsCount]);
 
   // Close "Others" popover when clicking outside
   useEffect(() => {
@@ -81,7 +101,7 @@ export function LeftNavSidebar({
   };
 
   const handleNotificationClick = () => {
-    notify('Belum ada notifikasi baru untuk saat ini.');
+    setIsRequestsModalOpen(true);
   };
 
   const handleProfileClick = () => {
@@ -218,8 +238,10 @@ export function LeftNavSidebar({
             >
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
-            {/* Red dot badge */}
-            <span className="left-nav-dot" />
+            {/* Dynamic notification badge */}
+            {requestCount > 0 && (
+              <span className="left-nav-badge">{requestCount}</span>
+            )}
           </div>
           <span className="left-nav-label">Notifications</span>
         </button>
@@ -386,6 +408,13 @@ export function LeftNavSidebar({
           <span className="left-nav-label">Others</span>
         </button>
       </div>
+
+      {/* Follow Requests Modal */}
+      <FollowRequestsModal
+        isOpen={isRequestsModalOpen}
+        onClose={() => setIsRequestsModalOpen(false)}
+        onRequestHandled={refreshRequestsCount}
+      />
     </aside>
   );
 }

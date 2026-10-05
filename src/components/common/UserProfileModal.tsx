@@ -4,8 +4,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useAuth, useTheme } from '@/context';
-import { authService, uploadService } from '@/services';
-import { UserProfile } from '@/types';
+import { authService, uploadService, followService } from '@/services';
+import { UserProfile, RelationshipStatus } from '@/types';
+import { FollowListModal } from './FollowListModal';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -28,6 +29,9 @@ function UserProfileModalContent({
   const isDark = theme === 'dark';
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [relationship, setRelationship] = useState<RelationshipStatus | null>(null);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followListTab, setFollowListTab] = useState<'followers' | 'following' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
@@ -74,7 +78,6 @@ function UserProfileModalContent({
           if (data) {
             setProfile(data);
           } else {
-            // If API returned null/404, fallback to minimal structure with no hardcoded bio
             if (fallbackUsername) {
               setProfile({
                 id: userId,
@@ -95,6 +98,18 @@ function UserProfileModalContent({
             }
           }
         }
+
+        // Fetch 360 relationship status if authenticated and not self
+        if (currentUser && currentUser.id !== userId) {
+          try {
+            const relRes = await followService.getRelationship(userId);
+            if (!ignore && relRes.data) {
+              setRelationship(relRes.data);
+            }
+          } catch {
+            // Relationship endpoint fallback
+          }
+        }
       } catch (err: unknown) {
         if (!ignore) {
           setError(err instanceof Error ? err.message : 'Gagal memuat profil pengguna.');
@@ -111,7 +126,86 @@ function UserProfileModalContent({
     return () => {
       ignore = true;
     };
-  }, [userId, fallbackUsername]);
+  }, [userId, fallbackUsername, currentUser]);
+
+  const handleFollowToggle = async () => {
+    if (followLoading || isCurrentUser) return;
+    setFollowLoading(true);
+
+    try {
+      const isCurrentlyFollowing = relationship?.is_following;
+      const isCurrentlyPending = relationship?.is_pending;
+
+      if (isCurrentlyFollowing || isCurrentlyPending) {
+        // Unfollow or Cancel Request
+        await followService.unfollowUser(userId);
+        setRelationship((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_following: false,
+                is_pending: false,
+                can_view_content: !prev.is_private,
+              }
+            : null
+        );
+        if (isCurrentlyFollowing) {
+          setProfile((prev) => {
+            if (!prev) return null;
+            const curCount = prev.stats?.followers_count || 0;
+            return {
+              ...prev,
+              stats: {
+                ...prev.stats,
+                stories_count: prev.stats?.stories_count || 0,
+                saved_count: prev.stats?.saved_count || 0,
+                likes_count: prev.stats?.likes_count || 0,
+                following_count: prev.stats?.following_count || 0,
+                followers_count: Math.max(0, curCount - 1),
+              },
+            };
+          });
+        }
+      } else {
+        // Follow User
+        const res = await followService.followUser(userId);
+        const isPending = res.data?.status === 'pending';
+
+        setRelationship((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_following: !isPending,
+                is_pending: isPending,
+                can_view_content: !isPending || prev.can_view_content,
+              }
+            : null
+        );
+
+        if (!isPending) {
+          setProfile((prev) => {
+            if (!prev) return null;
+            const curCount = prev.stats?.followers_count || 0;
+            return {
+              ...prev,
+              stats: {
+                ...prev.stats,
+                stories_count: prev.stats?.stories_count || 0,
+                saved_count: prev.stats?.saved_count || 0,
+                likes_count: prev.stats?.likes_count || 0,
+                following_count: prev.stats?.following_count || 0,
+                followers_count: curCount + 1,
+              },
+            };
+          });
+        }
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Gagal memperbarui status ikuti');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -363,6 +457,24 @@ function UserProfileModalContent({
                     <h3 id="user-modal-title" style={styles.username}>
                       @{username}
                     </h3>
+                    {(profile?.is_private || relationship?.is_private) && (
+                      <span
+                        title="Akun Privat"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+                          fontSize: '0.75rem',
+                          cursor: 'default',
+                        }}
+                      >
+                        🔒
+                      </span>
+                    )}
                   </div>
 
                   {profile?.email && (
@@ -396,7 +508,7 @@ function UserProfileModalContent({
                   </p>
                 </div>
 
-                {/* Metrics & Social Stats */}
+                {/* Metrics & Social Stats with Clickable Followers/Following */}
                 <div
                   style={{
                     ...styles.statsBar,
@@ -413,22 +525,62 @@ function UserProfileModalContent({
 
                   <div style={styles.statDivider}></div>
 
-                  <div style={styles.statItem}>
+                  <div
+                    style={{ ...styles.statItem, cursor: 'pointer' }}
+                    onClick={() => setFollowListTab('followers')}
+                    title="Lihat Daftar Pengikut"
+                  >
                     <strong style={styles.statNumber}>
-                      {profile?.stats?.likes_count ?? 0}
+                      {profile?.stats?.followers_count ?? 0}
                     </strong>
-                    <span style={styles.statLabel}>Likes Diterima</span>
+                    <span style={{ ...styles.statLabel, color: 'var(--social-blue)' }}>Pengikut</span>
+                  </div>
+
+                  <div style={styles.statDivider}></div>
+
+                  <div
+                    style={{ ...styles.statItem, cursor: 'pointer' }}
+                    onClick={() => setFollowListTab('following')}
+                    title="Lihat Daftar Mengikuti"
+                  >
+                    <strong style={styles.statNumber}>
+                      {profile?.stats?.following_count ?? 0}
+                    </strong>
+                    <span style={{ ...styles.statLabel, color: 'var(--social-blue)' }}>Mengikuti</span>
                   </div>
 
                   <div style={styles.statDivider}></div>
 
                   <div style={styles.statItem}>
                     <strong style={styles.statNumber}>
-                      {profile?.stats?.saved_count ?? 0}
+                      {profile?.stats?.likes_count ?? 0}
                     </strong>
-                    <span style={styles.statLabel}>Tersimpan</span>
+                    <span style={styles.statLabel}>Likes</span>
                   </div>
                 </div>
+
+                {/* Private Account Content Gating Notice */}
+                {!isCurrentUser && (relationship?.is_private || profile?.is_private) && !relationship?.can_view_content && (
+                  <div
+                    style={{
+                      margin: '0 0 1.25rem',
+                      padding: '1.25rem 1rem',
+                      borderRadius: '16px',
+                      textAlign: 'center',
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                      border: isDark ? '1px dashed rgba(255, 255, 255, 0.12)' : '1px dashed rgba(0, 0, 0, 0.1)',
+                      width: '100%',
+                    }}
+                  >
+                    <div style={{ fontSize: '1.75rem', marginBottom: '0.35rem' }}>🔒</div>
+                    <h4 style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--heading-color)', margin: '0 0 0.25rem' }}>
+                      Akun Ini Bersifat Privat
+                    </h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', margin: 0 }}>
+                      Ikuti akun ini untuk melihat postingan dan aktivitas lengkapnya.
+                    </p>
+                  </div>
+                )}
 
                 {/* Footer Actions */}
                 <div style={styles.footerActions}>
@@ -442,16 +594,60 @@ function UserProfileModalContent({
                       Buka Halaman Profil Saya &rarr;
                     </Link>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={styles.actionBtn}
-                      onClick={handleClose}
-                    >
-                      Close Profile
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.65rem', width: '100%' }}>
+                      <button
+                        type="button"
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        className={
+                          relationship?.is_following || relationship?.is_pending
+                            ? 'btn btn-secondary'
+                            : 'btn btn-primary'
+                        }
+                        style={{ ...styles.actionBtn, flex: 1 }}
+                      >
+                        {followLoading ? (
+                          'Memproses...'
+                        ) : relationship?.is_following ? (
+                          'Mengikuti'
+                        ) : relationship?.is_pending ? (
+                          'Diminta'
+                        ) : relationship?.is_followed_by ? (
+                          'Ikuti Balik'
+                        ) : (
+                          'Ikuti'
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '0.8rem 1.25rem', borderRadius: '14px', fontWeight: 600 }}
+                        onClick={handleClose}
+                      >
+                        Tutup
+                      </button>
+                    </div>
                   )}
                 </div>
+
+                {/* FollowListModal when clicking followers or following stats */}
+                {followListTab && (
+                  <FollowListModal
+                    isOpen={true}
+                    onClose={() => setFollowListTab(null)}
+                    userId={userId}
+                    username={username}
+                    initialTab={followListTab}
+                    onRelationshipChange={async () => {
+                      const refreshed = await authService.getUserProfileById(userId);
+                      if (refreshed) setProfile(refreshed);
+                      if (currentUser && currentUser.id !== userId) {
+                        const relRes = await followService.getRelationship(userId);
+                        if (relRes.data) setRelationship(relRes.data);
+                      }
+                    }}
+                  />
+                )}
               </>
             )}
           </div>
