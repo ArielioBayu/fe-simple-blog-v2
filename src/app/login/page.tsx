@@ -354,10 +354,22 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} style={styles.formElement}>
               {/* Input Identifier */}
               <div style={styles.inputGroup}>
+                <label
+                  htmlFor="login-identifier"
+                  style={{
+                    display: 'block',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    marginBottom: '5px',
+                    color: isDark ? '#E2E8F0' : '#334155',
+                  }}
+                >
+                  Username atau Email
+                </label>
                 <input
                   id="login-identifier"
                   type="text"
-                  placeholder="Username atau Email"
+                  placeholder="Masukkan username atau email Anda"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="auth-input-field"
@@ -374,11 +386,23 @@ export default function LoginPage() {
 
               {/* Input Password */}
               <div style={styles.inputGroup}>
+                <label
+                  htmlFor="login-password"
+                  style={{
+                    display: 'block',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    marginBottom: '5px',
+                    color: isDark ? '#E2E8F0' : '#334155',
+                  }}
+                >
+                  Kata Sandi
+                </label>
                 <div style={styles.passwordContainer}>
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Password"
+                    placeholder="Masukkan kata sandi"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="auth-input-field"

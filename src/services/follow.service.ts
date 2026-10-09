@@ -133,3 +133,16 @@ export const followService = {
     return await apiFetch<T>(`/posts/feed?page=${page}&limit=${limit}`);
   },
 };
+
+// Named function exports matching Section 5.B of FE_INTEGRATION_GUIDE.md
+export const followUser = (targetUserId: number) => followService.followUser(targetUserId);
+export const unfollowUser = (targetUserId: number) => followService.unfollowUser(targetUserId);
+export const removeFollower = (followerUserId: number) => followService.removeFollower(followerUserId);
+export const fetchFollowRequests = (page = 1, limit = 10) => followService.getFollowRequests(page, limit);
+export const acceptFollowRequest = (followerUserId: number) => followService.acceptFollowRequest(followerUserId);
+export const rejectFollowRequest = (followerUserId: number) => followService.rejectFollowRequest(followerUserId);
+export const updateAccountPrivacy = (isPrivate: boolean) => followService.updatePrivacy(isPrivate);
+export const fetchFollowers = (userId: number, page = 1, limit = 20, search = '') => followService.getFollowers(userId, page, limit, search);
+export const fetchFollowing = (userId: number, page = 1, limit = 20, search = '') => followService.getFollowing(userId, page, limit, search);
+export const fetchRelationshipStatus = (userId: number) => followService.getRelationship(userId);
+export const fetchPersonalizedFeed = <T = unknown>(page = 1, limit = 10) => followService.getFeedPosts<T>(page, limit);

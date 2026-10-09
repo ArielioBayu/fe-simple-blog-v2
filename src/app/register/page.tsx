@@ -371,10 +371,22 @@ export default function RegisterPage() {
               <form onSubmit={handleSubmit} style={styles.formElement}>
                 {/* Input Username */}
                 <div style={styles.inputGroup}>
+                  <label
+                    htmlFor="reg-username"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      marginBottom: '5px',
+                      color: isDark ? '#E2E8F0' : '#334155',
+                    }}
+                  >
+                    Nama Pengguna (Username)
+                  </label>
                   <input
                     id="reg-username"
                     type="text"
-                    placeholder="Nama Pengguna (Username)"
+                    placeholder="Contoh: bayu_aji"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="auth-input-field"
@@ -392,10 +404,22 @@ export default function RegisterPage() {
 
                 {/* Input Email */}
                 <div style={styles.inputGroup}>
+                  <label
+                    htmlFor="reg-email"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      marginBottom: '5px',
+                      color: isDark ? '#E2E8F0' : '#334155',
+                    }}
+                  >
+                    Alamat Email
+                  </label>
                   <input
                     id="reg-email"
                     type="email"
-                    placeholder="Alamat Email"
+                    placeholder="nama@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="auth-input-field"
@@ -412,11 +436,23 @@ export default function RegisterPage() {
 
                 {/* Input Password */}
                 <div style={styles.inputGroup}>
+                  <label
+                    htmlFor="reg-password"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      marginBottom: '5px',
+                      color: isDark ? '#E2E8F0' : '#334155',
+                    }}
+                  >
+                    Kata Sandi (Min. 6 Karakter)
+                  </label>
                   <div style={styles.passwordContainer}>
                     <input
                       id="reg-password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Kata Sandi (Min. 6 karakter)"
+                      placeholder="Masukkan kata sandi aman"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="auth-input-field"

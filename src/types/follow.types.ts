@@ -44,3 +44,8 @@ export interface UpdatePrivacyPayload {
 export interface PrivacySettingResponse {
   is_private: boolean;
 }
+
+// Aliases matching FE_INTEGRATION_GUIDE.md
+export type FollowUserData = FollowUserItem;
+export type FollowRequestUser = FollowRequestItem;
+export type FollowActionResponse = FollowActionData;

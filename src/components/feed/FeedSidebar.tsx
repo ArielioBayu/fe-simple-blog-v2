@@ -6,26 +6,28 @@ import { uploadService } from '@/services';
 
 interface FeedSidebarProps {
   userStoriesCount: number;
-  savedStoriesCount: number;
-  likedStoriesCount: number;
+  savedStoriesCount?: number;
+  likedStoriesCount?: number;
   tags: string[];
   activeTag: string;
   onSelectTag: (tag: string) => void;
   onOpenCreateModal: () => void;
   onOpenEditProfile?: () => void;
   onOpenProfile?: () => void;
+  onOpenFollowList?: (tab: 'followers' | 'following') => void;
 }
 
 export function FeedSidebar({
   userStoriesCount,
-  savedStoriesCount,
-  likedStoriesCount,
+  savedStoriesCount = 0,
+  likedStoriesCount = 0,
   tags,
   activeTag,
   onSelectTag,
   onOpenCreateModal,
   onOpenEditProfile,
   onOpenProfile,
+  onOpenFollowList,
 }: FeedSidebarProps) {
   const { user } = useAuth();
   const username = user?.username || 'Creator';
@@ -34,8 +36,9 @@ export function FeedSidebar({
   const bannerSrc = user?.banner_url ? uploadService.getImageUrl(user.banner_url) : null;
 
   // Real stats from backend (or fallback to calculated)
-  const storiesCount = user?.stats?.stories_count !== undefined ? user.stats.stories_count : userStoriesCount;
-  const likesCount = user?.stats?.likes_count !== undefined ? user.stats.likes_count : likedStoriesCount;
+  const postsCount = user?.stats?.stories_count !== undefined ? user.stats.stories_count : userStoriesCount;
+  const followersCount = user?.stats?.followers_count ?? 0;
+  const followingCount = user?.stats?.following_count ?? 0;
 
   const handleProfileClick = onOpenProfile || onOpenEditProfile;
 
@@ -77,19 +80,31 @@ export function FeedSidebar({
           <p style={styles.profileBio}>{bio}</p>
 
           <div style={styles.profileStats}>
-            <div style={styles.statItem}>
-              <strong style={styles.statNumber}>{storiesCount}</strong>
-              <span style={styles.statLabel}>Stories</span>
+            <div
+              style={{ ...styles.statItem, cursor: handleProfileClick ? 'pointer' : 'default' }}
+              onClick={handleProfileClick}
+              title="Lihat Postingan Anda"
+            >
+              <strong style={styles.statNumber}>{postsCount}</strong>
+              <span style={styles.statLabel}>Posts</span>
             </div>
             <div style={styles.statDivider}></div>
-            <div style={styles.statItem}>
-              <strong style={styles.statNumber}>{savedStoriesCount}</strong>
-              <span style={styles.statLabel}>Saved</span>
+            <div
+              style={{ ...styles.statItem, cursor: (onOpenFollowList || handleProfileClick) ? 'pointer' : 'default' }}
+              onClick={() => onOpenFollowList ? onOpenFollowList('followers') : handleProfileClick?.()}
+              title="Lihat Daftar Pengikut"
+            >
+              <strong style={styles.statNumber}>{followersCount}</strong>
+              <span style={styles.statLabel}>Followers</span>
             </div>
             <div style={styles.statDivider}></div>
-            <div style={styles.statItem}>
-              <strong style={styles.statNumber}>{likesCount}</strong>
-              <span style={styles.statLabel}>Likes</span>
+            <div
+              style={{ ...styles.statItem, cursor: (onOpenFollowList || handleProfileClick) ? 'pointer' : 'default' }}
+              onClick={() => onOpenFollowList ? onOpenFollowList('following') : handleProfileClick?.()}
+              title="Lihat Akun yang Diikuti"
+            >
+              <strong style={styles.statNumber}>{followingCount}</strong>
+              <span style={styles.statLabel}>Following</span>
             </div>
           </div>
 
@@ -227,15 +242,19 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: '0.15rem',
+    flex: 1,
+    transition: 'transform 0.15s ease',
   },
   statNumber: {
     fontSize: '1rem',
     fontWeight: 800,
     color: 'var(--heading-color)',
+    fontFamily: 'var(--font-outfit), sans-serif',
   },
   statLabel: {
-    fontSize: '0.72rem',
+    fontSize: '0.74rem',
     color: 'var(--fg-subtle)',
+    fontWeight: 500,
   },
   statDivider: {
     width: '1px',

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '@/context';
 import { uploadService, followService } from '@/services';
 import { UserProfile } from '@/types';
+import { PrivacySettingsToggle } from './PrivacySettingsToggle';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -225,72 +226,12 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
             />
           </div>
 
-          {/* Account Privacy Toggle */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.9rem 1rem',
-              borderRadius: '14px',
-              backgroundColor: 'var(--bg-main)',
-              border: '1px solid var(--border)',
-              margin: '0.4rem 0 1rem',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingRight: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.95rem' }}>🔒</span>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--heading-color)' }}>
-                  Akun Privat
-                </span>
-              </div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', lineHeight: 1.4 }}>
-                Jika aktif, hanya orang yang Anda setujui yang dapat melihat cerita dan profil Anda.
-              </span>
-            </div>
-
-            <label
-              style={{
-                position: 'relative',
-                display: 'inline-block',
-                width: '44px',
-                height: '24px',
-                flexShrink: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={isPrivate}
-                onChange={(e) => setIsPrivate(e.target.checked)}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundColor: isPrivate ? 'var(--brand-coral, #FF5A36)' : 'var(--border-subtle, #CBD5E1)',
-                  borderRadius: '9999px',
-                  transition: '0.25s',
-                }}
-              >
-                <span
-                  style={{
-                    position: 'absolute',
-                    height: '18px',
-                    width: '18px',
-                    left: isPrivate ? '23px' : '3px',
-                    bottom: '3px',
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '50%',
-                    transition: '0.25s',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }}
-                />
-              </span>
-            </label>
-          </div>
+          {/* Account Privacy Toggle with Warning Modal */}
+          <PrivacySettingsToggle
+            initialIsPrivate={isPrivate}
+            onPrivacyChanged={(val) => setIsPrivate(val)}
+            style={{ margin: '0.4rem 0 1rem' }}
+          />
 
           {/* Actions */}
           <div style={styles.actions}>

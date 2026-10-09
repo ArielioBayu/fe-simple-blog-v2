@@ -14,6 +14,8 @@ import {
   CommentList,
   UserProfileModal,
   LeftNavSidebar,
+  PostSkeleton,
+  ErrorState,
 } from '@/components';
 import { PostDetailResponseData, Comment } from '@/types';
 import { ReplyTarget } from '@/components/post/CommentList';
@@ -292,28 +294,50 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   // ── Loading / Error states ─────────────────────────────────────────────────
+  // ── Loading / Error states ─────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner} className="spinner" />
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>Memuat cerita...</p>
+      <div style={styles.pageContainer} className="animate-fade-in has-left-sidebar">
+        <LeftNavSidebar onHomeClick={() => router.push('/')} onToast={showToast} />
+        <Navbar showBackToFeed onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)} />
+        <main style={styles.main} className="container">
+          <div style={styles.breadcrumbBar}>
+            <Link href="/" style={styles.backBtn}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              <span>Back to Feed</span>
+            </Link>
+          </div>
+          <PostSkeleton />
+        </main>
       </div>
     );
   }
 
   if (error || !postData) {
     return (
-      <div style={styles.errorContainer} className="container animate-fade-in">
-        <div style={styles.errorCard} className="glass">
-          <div style={{ fontSize: '2.5rem' }}>🔍</div>
-          <h3 style={{ fontSize: '1.35rem', fontWeight: 800 }}>Story Not Found</h3>
-          <p style={{ color: 'var(--fg-muted)', margin: '0.5rem 0' }}>
-            {error || 'This post may have been removed or is unavailable.'}
-          </p>
-          <Link href="/" className="btn btn-primary" style={{ marginTop: '1rem' }}>
-            ← Back to Feed
-          </Link>
-        </div>
+      <div style={styles.pageContainer} className="animate-fade-in has-left-sidebar">
+        <LeftNavSidebar onHomeClick={() => router.push('/')} onToast={showToast} />
+        <Navbar showBackToFeed onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)} />
+        <main style={styles.main} className="container">
+          <div style={styles.breadcrumbBar}>
+            <Link href="/" style={styles.backBtn}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              <span>Back to Feed</span>
+            </Link>
+          </div>
+          <ErrorState
+            title="Cerita Tidak Ditemukan"
+            message={error || 'Cerita ini mungkin telah dihapus atau tidak tersedia.'}
+            onRetry={() => window.location.reload()}
+            retryLabel="Muat Ulang Halaman"
+          />
+        </main>
       </div>
     );
   }

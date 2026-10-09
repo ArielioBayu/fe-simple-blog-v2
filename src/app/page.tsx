@@ -13,8 +13,10 @@ import {
   FeedSidebar,
   EditProfileModal,
   UserProfileModal,
+  FollowListModal,
   FeedSkeletonList,
   EmptyFeedState,
+  ErrorState,
   MobileBottomNav,
   LeftNavSidebar,
   CommentDrawer,
@@ -43,6 +45,7 @@ export default function FeedPage() {
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
   const [targetUsername, setTargetUsername] = useState<string | undefined>(undefined);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+  const [followListModalTab, setFollowListModalTab] = useState<'followers' | 'following' | null>(null);
   const [savedPostIds, setSavedPostIds] = useState<number[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [animatingPostId, setAnimatingPostId] = useState<number | null>(null);
@@ -337,53 +340,64 @@ export default function FeedPage() {
           <div style={styles.feedColumn}>
             <div style={styles.feedHeader}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <div className="feed-tabs-container" role="tablist" aria-label="Mode Feed">
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={feedMode === 'explore'}
                     onClick={() => {
                       if (feedMode !== 'explore') {
                         setFeedMode('explore');
                         setPage(1);
                       }
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '4px 0',
-                      fontSize: '1.25rem',
-                      fontWeight: 800,
-                      fontFamily: 'var(--font-outfit), sans-serif',
-                      color: feedMode === 'explore' ? 'var(--heading-color)' : 'var(--fg-muted)',
-                      borderBottom: feedMode === 'explore' ? '2.5px solid var(--brand-coral, #FF5A36)' : '2.5px solid transparent',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
+                    className={`feed-tab-btn ${feedMode === 'explore' ? 'active' : ''}`}
                   >
-                    Untuk Anda
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                    </svg>
+                    <span>Untuk Anda</span>
                   </button>
-                  <span style={{ color: 'var(--border-subtle)', margin: '0 4px', fontSize: '0.9rem' }}>•</span>
+
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={feedMode === 'following'}
                     onClick={() => {
                       if (feedMode !== 'following') {
                         setFeedMode('following');
                         setPage(1);
                       }
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '4px 0',
-                      fontSize: '1.25rem',
-                      fontWeight: 800,
-                      fontFamily: 'var(--font-outfit), sans-serif',
-                      color: feedMode === 'following' ? 'var(--heading-color)' : 'var(--fg-muted)',
-                      borderBottom: feedMode === 'following' ? '2.5px solid var(--brand-coral, #FF5A36)' : '2.5px solid transparent',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
+                    className={`feed-tab-btn ${feedMode === 'following' ? 'active' : ''}`}
                   >
-                    Mengikuti
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="11" cy="7" r="4" />
+                      <polyline points="17 11 19 13 23 9" />
+                    </svg>
+                    <span>Mengikuti</span>
                   </button>
                 </div>
                 <p style={styles.feedSubtitle}>
@@ -406,14 +420,26 @@ export default function FeedPage() {
               )}
             </div>
 
-            {error && <div style={styles.errorBanner}>{error}</div>}
+            {error && (
+              <ErrorState
+                title="Gagal Memuat Cerita"
+                message={error}
+                onRetry={refetchFirstPage}
+                retryLabel="Muat Ulang Cerita"
+              />
+            )}
 
             {loading ? (
               <FeedSkeletonList count={3} />
             ) : filteredPosts.length === 0 ? (
               <EmptyFeedState
                 activeTag={activeTag}
+                feedMode={feedMode}
                 onResetTag={() => setActiveTag('all')}
+                onSwitchToExplore={() => {
+                  setFeedMode('explore');
+                  setPage(1);
+                }}
                 onCreatePost={() => setIsModalOpen(true)}
               />
             ) : (
@@ -476,6 +502,7 @@ export default function FeedPage() {
             onOpenCreateModal={() => setIsModalOpen(true)}
             onOpenProfile={() => router.push('/profile')}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
+            onOpenFollowList={setFollowListModalTab}
           />
         </div>
       </main>
@@ -501,6 +528,21 @@ export default function FeedPage() {
         fallbackUsername={targetUsername}
         onClose={() => setIsUserProfileOpen(false)}
       />
+
+      {/* Followers & Following List Modal for Logged-In User */}
+      {followListModalTab && user && (
+        <FollowListModal
+          isOpen={true}
+          userId={user.id}
+          username={user.username}
+          initialTab={followListModalTab}
+          onClose={() => setFollowListModalTab(null)}
+          onUserSelect={(targetId, targetUsername) => {
+            setFollowListModalTab(null);
+            handleOpenUserProfile(targetId, targetUsername);
+          }}
+        />
+      )}
 
       {/* Mobile Bottom Navigation Bar (Visible only on < 768px screens) */}
       <MobileBottomNav

@@ -7,6 +7,8 @@ import { useAuth, useTheme } from '@/context';
 import { authService, uploadService, followService } from '@/services';
 import { UserProfile, RelationshipStatus } from '@/types';
 import { FollowListModal } from './FollowListModal';
+import { FollowButton } from './FollowButton';
+import { PrivateAccountLocked } from './PrivateAccountLocked';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ function UserProfileModalContent({
   const [followListTab, setFollowListTab] = useState<'followers' | 'following' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
   const [animateOut, setAnimateOut] = useState(false);
 
@@ -201,7 +204,8 @@ function UserProfileModalContent({
         }
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Gagal memperbarui status ikuti');
+      setActionError(err instanceof Error ? err.message : 'Gagal memperbarui status ikuti');
+      setTimeout(() => setActionError(null), 4000);
     } finally {
       setFollowLoading(false);
     }
@@ -398,6 +402,31 @@ function UserProfileModalContent({
 
           {/* Content Container */}
           <div style={styles.content}>
+            {actionError && (
+              <div
+                role="alert"
+                style={{
+                  padding: '0.6rem 0.9rem',
+                  borderRadius: 'var(--radius-sm, 8px)',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#EF4444',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span>{actionError}</span>
+              </div>
+            )}
+
             {/* Avatar Row */}
             <div style={styles.avatarRow}>
               <div className="story-avatar-wrap" style={{ width: '84px', height: '84px' }}>
@@ -560,26 +589,9 @@ function UserProfileModalContent({
                 </div>
 
                 {/* Private Account Content Gating Notice */}
+                {/* Private Account Content Gating Notice */}
                 {!isCurrentUser && (relationship?.is_private || profile?.is_private) && !relationship?.can_view_content && (
-                  <div
-                    style={{
-                      margin: '0 0 1.25rem',
-                      padding: '1.25rem 1rem',
-                      borderRadius: '16px',
-                      textAlign: 'center',
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                      border: isDark ? '1px dashed rgba(255, 255, 255, 0.12)' : '1px dashed rgba(0, 0, 0, 0.1)',
-                      width: '100%',
-                    }}
-                  >
-                    <div style={{ fontSize: '1.75rem', marginBottom: '0.35rem' }}>🔒</div>
-                    <h4 style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--heading-color)', margin: '0 0 0.25rem' }}>
-                      Akun Ini Bersifat Privat
-                    </h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', margin: 0 }}>
-                      Ikuti akun ini untuk melihat postingan dan aktivitas lengkapnya.
-                    </p>
-                  </div>
+                  <PrivateAccountLocked style={{ margin: '0 0 1.25rem', width: '100%' }} />
                 )}
 
                 {/* Footer Actions */}
@@ -594,30 +606,43 @@ function UserProfileModalContent({
                       Buka Halaman Profil Saya &rarr;
                     </Link>
                   ) : (
-                    <div style={{ display: 'flex', gap: '0.65rem', width: '100%' }}>
-                      <button
-                        type="button"
-                        onClick={handleFollowToggle}
-                        disabled={followLoading}
-                        className={
-                          relationship?.is_following || relationship?.is_pending
-                            ? 'btn btn-secondary'
-                            : 'btn btn-primary'
-                        }
-                        style={{ ...styles.actionBtn, flex: 1 }}
-                      >
-                        {followLoading ? (
-                          'Memproses...'
-                        ) : relationship?.is_following ? (
-                          'Mengikuti'
-                        ) : relationship?.is_pending ? (
-                          'Diminta'
-                        ) : relationship?.is_followed_by ? (
-                          'Ikuti Balik'
-                        ) : (
-                          'Ikuti'
-                        )}
-                      </button>
+                    <div style={{ display: 'flex', gap: '0.65rem', width: '100%', alignItems: 'center' }}>
+                      {relationship ? (
+                        <FollowButton
+                          targetUserId={userId}
+                          targetUsername={username}
+                          initialRelationship={relationship}
+                          onRelationshipChange={(updated) => {
+                            setRelationship(updated);
+                            // Refresh counts
+                            authService.getUserProfileById(userId).then((fresh) => {
+                              if (fresh) setProfile(fresh);
+                            }).catch(() => {});
+                          }}
+                          onEditProfileClick={handleClose}
+                          style={{
+                            flex: 1,
+                            padding: '0.8rem 1.25rem',
+                            borderRadius: '14px',
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleFollowToggle}
+                          disabled={followLoading}
+                          className="btn btn-primary"
+                          style={{ ...styles.actionBtn, flex: 1 }}
+                        >
+                          {followLoading ? 'Memproses...' : 'Ikuti'}
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         className="btn btn-secondary"

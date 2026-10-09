@@ -24,6 +24,7 @@ function FollowRequestsModalContent({
   const [requests, setRequests] = useState<FollowRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<Record<number, boolean>>({});
   const [animateOut, setAnimateOut] = useState(false);
 
@@ -80,7 +81,8 @@ function FollowRequestsModalContent({
       setRequests((prev) => prev.filter((r) => r.user_id !== followerUserId));
       if (onRequestHandled) onRequestHandled();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Gagal menerima permintaan.');
+      setActionError(err instanceof Error ? err.message : 'Gagal menerima permintaan.');
+      setTimeout(() => setActionError(null), 4000);
     } finally {
       setProcessingIds((prev) => ({ ...prev, [followerUserId]: false }));
     }
@@ -90,13 +92,15 @@ function FollowRequestsModalContent({
   const handleReject = async (followerUserId: number) => {
     if (processingIds[followerUserId]) return;
     setProcessingIds((prev) => ({ ...prev, [followerUserId]: true }));
+    setActionError(null);
 
     try {
       await followService.rejectFollowRequest(followerUserId);
       setRequests((prev) => prev.filter((r) => r.user_id !== followerUserId));
       if (onRequestHandled) onRequestHandled();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Gagal menolak permintaan.');
+      setActionError(err instanceof Error ? err.message : 'Gagal menolak permintaan.');
+      setTimeout(() => setActionError(null), 4000);
     } finally {
       setProcessingIds((prev) => ({ ...prev, [followerUserId]: false }));
     }
@@ -214,21 +218,27 @@ function FollowRequestsModalContent({
               type="button"
               onClick={handleClose}
               aria-label="Tutup modal"
+              title="Tutup (Esc)"
               style={{
-                width: '32px',
-                height: '32px',
+                width: '36px',
+                height: '36px',
+                minWidth: '36px',
+                minHeight: '36px',
+                padding: 0,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-                border: 'none',
-                color: 'var(--fg-muted)',
+                background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(15, 23, 42, 0.09)',
+                color: 'var(--fg-main)',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                flexShrink: 0,
+                transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                outline: 'none',
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', pointerEvents: 'none' }}>
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -244,6 +254,27 @@ function FollowRequestsModalContent({
               maxHeight: '440px',
             }}
           >
+            {actionError && (
+              <div
+                role="alert"
+                style={{
+                  margin: '0.5rem 1rem',
+                  padding: '0.55rem 0.85rem',
+                  borderRadius: 'var(--radius-sm, 8px)',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#EF4444',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>⚠</span>
+                <span>{actionError}</span>
+              </div>
+            )}
+
             {loading ? (
               <div style={{ padding: '0.75rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {[1, 2, 3].map((i) => (
@@ -311,13 +342,14 @@ function FollowRequestsModalContent({
               </div>
             ) : (
               <div>
-                {requests.map((item) => {
+                {requests.map((item, idx) => {
+                  const targetId = item.id || item.user_id;
                   const itemAvatarUrl = item.avatar_url ? uploadService.getImageUrl(item.avatar_url) : null;
-                  const isProcessing = !!processingIds[item.user_id];
+                  const isProcessing = !!(targetId && processingIds[targetId]);
 
                   return (
                     <div
-                      key={item.user_id}
+                      key={targetId ?? `req-${item.username}-${idx}`}
                       className="request-item-row"
                       style={{
                         display: 'flex',
@@ -330,8 +362,8 @@ function FollowRequestsModalContent({
                       {/* User Info clickable */}
                       <div
                         onClick={() => {
-                          if (onUserSelect) {
-                            onUserSelect(item.user_id, item.username);
+                          if (onUserSelect && targetId) {
+                            onUserSelect(targetId, item.username);
                           }
                           handleClose();
                         }}
