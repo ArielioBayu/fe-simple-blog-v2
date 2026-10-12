@@ -134,8 +134,9 @@ export function PostDetailCard({
           <ImageCarousel
             media={mediaList}
             altText={post.post_title}
-            aspectRatio="16 / 10"
-            maxHeight="520px"
+            aspectRatio="auto"
+            maxHeight="680px"
+            objectFit="contain"
           />
         </div>
       )}

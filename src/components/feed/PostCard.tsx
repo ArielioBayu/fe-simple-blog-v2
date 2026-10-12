@@ -21,6 +21,10 @@ interface PostCardProps {
   onDeletePost?: (postId: number) => void;
   /** Called when user clicks the comment icon — opens the CommentDrawer */
   onCommentClick?: (post: Post) => void;
+  /** Real-time comment count override from parent state sync */
+  commentCountOverride?: number;
+  /** Reports initial comment count loaded from API to parent */
+  onCommentCountLoaded?: (postId: number, count: number) => void;
 }
 
 export function PostCard({
@@ -35,17 +39,28 @@ export function PostCard({
   currentUserId,
   onDeletePost,
   onCommentClick,
+  commentCountOverride,
+  onCommentCountLoaded,
 }: PostCardProps) {
   const { t } = useLanguage();
   const router = useRouter();
   const isAuthor = Boolean(currentUserId && post.user_id && currentUserId === post.user_id);
   const [likeCount, setLikeCount] = useState<number | null>(null);
-  const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [commentCount, setCommentCount] = useState<number | null>(
+    commentCountOverride !== undefined ? commentCountOverride : null
+  );
   const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
     setAvatarError(false);
   }, [post.avatar_url]);
+
+  // Synchronize immediately if parent pushes a new real-time count
+  useEffect(() => {
+    if (commentCountOverride !== undefined) {
+      setCommentCount(commentCountOverride);
+    }
+  }, [commentCountOverride]);
 
   // Fetch real-time like count and comment count from BE Modul 7 endpoints
   useEffect(() => {
@@ -63,7 +78,11 @@ export function PostCard({
             setLikeCount(likesRes.value.data.like_count);
           }
           if (commentsRes.status === 'fulfilled' && commentsRes.value?.data?.comment_count !== undefined) {
-            setCommentCount(commentsRes.value.data.comment_count);
+            const count = commentsRes.value.data.comment_count;
+            if (commentCountOverride === undefined) {
+              setCommentCount(count);
+            }
+            onCommentCountLoaded?.(post.id, count);
           }
         }
       } catch {
@@ -76,7 +95,7 @@ export function PostCard({
     return () => {
       ignore = true;
     };
-  }, [post.id]);
+  }, [post.id, commentCountOverride, onCommentCountLoaded]);
 
   const handleLike = () => {
     onLikeToggle(post);
@@ -109,6 +128,9 @@ export function PostCard({
   const rawText = imageMatch ? post.post_content.replace(imageMatch[0], '').trim() : post.post_content;
   const postSnippet = rawText.length > 250 ? `${rawText.substring(0, 250)}...` : rawText;
 
+  // Real-time comment count priority: parent override > locally fetched count
+  const displayedCommentCount = commentCountOverride !== undefined ? commentCountOverride : commentCount;
+
   // Multi-image list from BE post_media or fallback to single cover photo
   const mediaList = (post.media && post.media.length > 0)
     ? post.media
@@ -120,7 +142,7 @@ export function PostCard({
     .filter((t) => t.length > 0);
 
   return (
-    <article style={styles.postCard} className="glass glass-interactive">
+    <article style={styles.postCard} className="glass glass-interactive feed-card-animated">
       {/* Card Header: Author Profile */}
       <div style={styles.cardHeader}>
         <div
@@ -194,8 +216,9 @@ export function PostCard({
           <ImageCarousel
             media={mediaList}
             altText={post.post_title}
-            aspectRatio="16 / 10"
-            maxHeight="440px"
+            aspectRatio="auto"
+            maxHeight="620px"
+            objectFit="contain"
             onImageClick={() => onCommentClick?.(post)}
           />
         </div>
@@ -274,8 +297,8 @@ export function PostCard({
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
-            {commentCount !== null && (
-              <span style={styles.actionCount}>{commentCount}</span>
+            {displayedCommentCount !== null && (
+              <span style={styles.actionCount}>{displayedCommentCount}</span>
             )}
           </button>
 

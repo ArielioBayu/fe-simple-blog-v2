@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth, useLanguage } from '@/context';
 import { uploadService } from '@/services';
+import { SearchUserItem } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
+import { NavbarUserSearch } from './NavbarUserSearch';
+import { UserProfileModal } from './UserProfileModal';
 
 interface NavbarProps {
   onCreatePost?: () => void;
@@ -12,6 +15,7 @@ interface NavbarProps {
   onThemeToggled?: (theme: string) => void;
   onHomeClick?: () => void;
   showBackToFeed?: boolean;
+  onUserClick?: (userId: number, username?: string) => void;
 }
 
 export function Navbar({
@@ -20,9 +24,11 @@ export function Navbar({
   onThemeToggled,
   onHomeClick,
   showBackToFeed = false,
+  onUserClick,
 }: NavbarProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const [selectedSearchUser, setSelectedSearchUser] = useState<SearchUserItem | null>(null);
   const username = user?.username || '';
   const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
   const [isScrolled, setIsScrolled] = useState(false);
@@ -57,6 +63,21 @@ export function Navbar({
           <span style={styles.logoSimple}>Simple</span>
           <span style={styles.logoBlog}>Blog</span>
         </Link>
+
+        {/* Server-Side Live User Search */}
+        {username && (
+          <div className="navbar-search-desktop" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+            <NavbarUserSearch
+              onSelectUser={(selectedUser) => {
+                if (onUserClick) {
+                  onUserClick(selectedUser.id, selectedUser.username);
+                } else {
+                  setSelectedSearchUser(selectedUser);
+                }
+              }}
+            />
+          </div>
+        )}
 
         {/* Navigation Actions */}
         <div style={styles.navActions}>
@@ -133,6 +154,16 @@ export function Navbar({
           )}
         </div>
       </div>
+
+      {/* Fallback UserProfileModal if onUserClick is not provided */}
+      {selectedSearchUser && !onUserClick && (
+        <UserProfileModal
+          isOpen={true}
+          userId={selectedSearchUser.id}
+          fallbackUsername={selectedSearchUser.username}
+          onClose={() => setSelectedSearchUser(null)}
+        />
+      )}
     </nav>
   );
 }

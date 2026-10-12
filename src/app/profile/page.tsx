@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context';
+import { useAuth, useLanguage } from '@/context';
 import { authService, postService, uploadService, bookmarkService, followService } from '@/services';
 import { Post, UserProfile } from '@/types';
 import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, FollowRequestsModal } from '@/components';
@@ -11,6 +11,7 @@ import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, Follo
 export default function ProfilePage() {
   const router = useRouter();
   const { user: authUser, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { t } = useLanguage();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -199,12 +200,14 @@ export default function ProfilePage() {
       <main style={styles.mainContainer} className="container">
         {/* Navigation Breadcrumb */}
         <div style={styles.backNavRow}>
-          <Link href="/" style={styles.backBtn} aria-label="Kembali ke Beranda">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>Kembali ke Beranda</span>
+          <Link href="/" className="profile-back-btn" aria-label={t.nav.backToHome || 'Kembali ke Beranda'}>
+            <span className="profile-back-icon-badge" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </span>
+            <span className="profile-back-btn-label">{t.nav.backToHome || 'Kembali ke Beranda'}</span>
           </Link>
         </div>
 

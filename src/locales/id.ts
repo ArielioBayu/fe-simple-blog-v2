@@ -35,6 +35,7 @@ export const id = {
     profilePage: 'Halaman Profil',
     welcome: 'Selamat Datang,',
     backToFeed: 'Kembali ke Feed',
+    backToHome: 'Kembali ke Beranda',
   },
   feed: {
     forYou: 'Untuk Anda',
@@ -159,6 +160,8 @@ export const id = {
     viewFollowers: 'Lihat Daftar Pengikut',
     viewFollowing: 'Lihat Akun yang Diikuti',
     clickToEditProfile: 'Klik untuk edit profil',
+    recentPosts: 'Postingan Terbaru',
+    noPostsYet: 'Belum ada cerita yang dibagikan',
   },
   auth: {
     loginTitle: 'Selamat Datang Kembali',
@@ -178,6 +181,20 @@ export const id = {
     refreshFeed: 'Menyegarkan beranda feed...',
     messagesPending: 'Fitur Pesan segera hadir di pembaruan mendatang.',
     searchPending: 'Fitur Pencarian segera hadir di pembaruan mendatang.',
+  },
+  search: {
+    placeholder: 'Cari pengguna...',
+    title: 'Pencarian Pengguna',
+    subtitle: 'Temukan kreator dan teman di SimpleBlog',
+    noResults: 'Pengguna Tidak Ditemukan',
+    noResultsDesc: 'Tidak ada akun yang cocok dengan kata kunci',
+    hint: 'Ketik nama lengkap atau @username untuk menemukan kreator dan teman.',
+    emptyHintTitle: 'Cari Kreator & Teman',
+    verified: 'Terverifikasi',
+    privateAccount: 'Akun Privat',
+    following: 'Mengikuti',
+    searching: 'Mencari...',
+    viewProfile: 'Lihat Profil',
   },
 };
 

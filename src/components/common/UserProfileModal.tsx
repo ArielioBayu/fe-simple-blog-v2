@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { useAuth, useTheme } from '@/context';
-import { authService, uploadService, followService } from '@/services';
-import { UserProfile, RelationshipStatus } from '@/types';
+import { useRouter } from 'next/navigation';
+import { useAuth, useTheme, useLanguage } from '@/context';
+import { authService, uploadService, followService, postService } from '@/services';
+import { UserProfile, RelationshipStatus, Post } from '@/types';
 import { FollowListModal } from './FollowListModal';
 import { FollowButton } from './FollowButton';
 import { PrivateAccountLocked } from './PrivateAccountLocked';
@@ -15,19 +16,24 @@ interface UserProfileModalProps {
   userId: number | null;
   fallbackUsername?: string;
   onClose: () => void;
+  onPostClick?: (post: Post) => void;
 }
 
 function UserProfileModalContent({
   userId,
   fallbackUsername,
   onClose,
+  onPostClick,
 }: {
   userId: number;
   fallbackUsername?: string;
   onClose: () => void;
+  onPostClick?: (post: Post) => void;
 }) {
+  const router = useRouter();
   const { user: currentUser } = useAuth();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -39,6 +45,10 @@ function UserProfileModalContent({
   const [actionError, setActionError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
   const [animateOut, setAnimateOut] = useState(false);
+
+  // Top 3 posts for public / permitted accounts
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // Smooth exit transition handler
   const handleClose = useCallback(() => {
@@ -131,6 +141,40 @@ function UserProfileModalContent({
     };
   }, [userId, fallbackUsername, currentUser]);
 
+  const isCurrentUser = currentUser?.id === userId;
+  const isPrivate = Boolean(profile?.is_private ?? relationship?.is_private ?? false);
+  const canViewContent = isCurrentUser || !isPrivate || Boolean(relationship?.can_view_content);
+
+  // Fetch top 3 posts when account is public or content is permitted
+  useEffect(() => {
+    let ignore = false;
+
+    if (!userId || !canViewContent) {
+      setUserPosts([]);
+      return;
+    }
+
+    async function loadUserPosts() {
+      setPostsLoading(true);
+      try {
+        const res = await postService.getUserPosts(userId, 1, 3);
+        if (!ignore && res.data) {
+          setUserPosts(res.data.slice(0, 3));
+        }
+      } catch {
+        if (!ignore) setUserPosts([]);
+      } finally {
+        if (!ignore) setPostsLoading(false);
+      }
+    }
+
+    loadUserPosts();
+
+    return () => {
+      ignore = true;
+    };
+  }, [userId, canViewContent]);
+
   const handleFollowToggle = async () => {
     if (followLoading || isCurrentUser) return;
     setFollowLoading(true);
@@ -220,7 +264,6 @@ function UserProfileModalContent({
     [handleClose]
   );
 
-  const isCurrentUser = currentUser?.id === userId;
   const username = profile?.username || fallbackUsername || 'Pengguna';
 
   // Real bio from API response JSON - without hardcode
@@ -332,6 +375,52 @@ function UserProfileModalContent({
         .user-modal-close-btn:active {
           transform: rotate(90deg) scale(0.92) !important;
         }
+
+        .user-profile-post-thumb {
+          position: relative;
+          aspect-ratio: 1 / 1;
+          border-radius: 14px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease;
+        }
+        .user-profile-post-thumb:hover {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+        }
+        .user-profile-post-thumb img {
+          transition: transform 0.3s ease;
+        }
+        .user-profile-post-thumb:hover img {
+          transform: scale(1.06);
+        }
+        .user-profile-thumb-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.52);
+          backdrop-filter: blur(2px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+          color: #ffffff;
+          font-weight: 700;
+          z-index: 3;
+        }
+        .user-profile-post-thumb:hover .user-profile-thumb-overlay {
+          opacity: 1;
+        }
+
+        @keyframes shimmerPulse {
+          0% { opacity: 0.35; }
+          50% { opacity: 0.8; }
+          100% { opacity: 0.35; }
+        }
+        .skeleton-shimmer {
+          animation: shimmerPulse 1.4s ease-in-out infinite;
+        }
       `}</style>
 
       <div
@@ -346,6 +435,9 @@ function UserProfileModalContent({
           aria-labelledby="user-modal-title"
           style={{
             ...styles.modalCard,
+            maxWidth: canViewContent ? '510px' : '430px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             background: isDark
               ? 'linear-gradient(160deg, #18181B 0%, #0F0F12 100%)'
               : 'linear-gradient(160deg, #FFFFFF 0%, #FAFAFA 100%)',
@@ -588,9 +680,118 @@ function UserProfileModalContent({
                   </div>
                 </div>
 
+                {/* ── 3 RECENT POSTS SECTION (FOR PUBLIC & PERMITTED PROFILES) ── */}
+                {canViewContent && (
+                  <div style={styles.recentPostsSection}>
+                    <div style={styles.recentPostsHeader}>
+                      <span style={styles.recentPostsTitle}>
+                        {t.profile.recentPosts}
+                      </span>
+                      {profile?.stats?.stories_count !== undefined && profile.stats.stories_count > 0 && (
+                        <span style={styles.recentPostsBadge}>
+                          {profile.stats.stories_count} {t.profile.storiesCount.toLowerCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {postsLoading ? (
+                      <div style={styles.recentPostsGrid}>
+                        {[0, 1, 2].map((idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              ...styles.postThumbBox,
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                            }}
+                            className="skeleton-shimmer"
+                          />
+                        ))}
+                      </div>
+                    ) : userPosts.length > 0 ? (
+                      <div style={styles.recentPostsGrid}>
+                        {userPosts.map((postItem) => {
+                          const cover = (postItem.media && postItem.media.length > 0)
+                            ? postItem.media[0].file_path
+                            : (postItem.file_path || postItem.filepath);
+                          const coverUrl = cover ? uploadService.getImageUrl(cover) : null;
+                          const isMulti = Boolean(postItem.media && postItem.media.length > 1);
+
+                          return (
+                            <div
+                              key={postItem.id}
+                              style={{
+                                ...styles.postThumbBox,
+                                backgroundColor: isDark ? '#1a1a1f' : '#f1f5f9',
+                              }}
+                              className="user-profile-post-thumb"
+                              onClick={() => {
+                                handleClose();
+                                if (onPostClick) {
+                                  onPostClick(postItem);
+                                } else {
+                                  router.push(`/posts/${postItem.id}`);
+                                }
+                              }}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleClose();
+                                  if (onPostClick) {
+                                    onPostClick(postItem);
+                                  } else {
+                                    router.push(`/posts/${postItem.id}`);
+                                  }
+                                }
+                              }}
+                              title={postItem.post_title}
+                            >
+                              {coverUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={coverUrl}
+                                  alt={postItem.post_title}
+                                  style={styles.postThumbImg}
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div style={styles.postThumbTextFallback}>
+                                  <span style={styles.postThumbIcon}>✍️</span>
+                                  <p style={styles.postThumbTextTitle}>{postItem.post_title}</p>
+                                </div>
+                              )}
+
+                              {isMulti && (
+                                <div style={styles.multiPhotoBadge} title="Carousel (Multi-foto)">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="8" y="2" width="14" height="14" rx="2" ry="2" />
+                                    <path d="M4 8v12a2 2 0 0 0 2 2h12" />
+                                  </svg>
+                                </div>
+                              )}
+
+                              {/* Interactive Hover Overlay with Post Title */}
+                              <div className="user-profile-thumb-overlay" style={styles.postThumbOverlay}>
+                                <div style={styles.overlayInner}>
+                                  <p style={styles.overlayTitle}>{postItem.post_title}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={styles.emptyPostsBox}>
+                        <span style={{ fontSize: '1.3rem' }}>📖</span>
+                        <p style={styles.emptyPostsText}>{t.profile.noPostsYet}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Private Account Content Gating Notice */}
-                {/* Private Account Content Gating Notice */}
-                {!isCurrentUser && (relationship?.is_private || profile?.is_private) && !relationship?.can_view_content && (
+                {!isCurrentUser && isPrivate && !canViewContent && (
                   <PrivateAccountLocked style={{ margin: '0 0 1.25rem', width: '100%' }} />
                 )}
 
@@ -643,14 +844,57 @@ function UserProfileModalContent({
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ padding: '0.8rem 1.25rem', borderRadius: '14px', fontWeight: 600 }}
-                        onClick={handleClose}
-                      >
-                        Tutup
-                      </button>
+                      {canViewContent ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary user-profile-view-full-btn"
+                          style={{
+                            padding: '0.8rem 1.15rem',
+                            borderRadius: '14px',
+                            fontWeight: 600,
+                            fontSize: '0.88rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onClick={() => {
+                            handleClose();
+                            router.push(`/profile/${userId}`);
+                          }}
+                          title="Lihat profil lengkap dan semua cerita"
+                        >
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
+                          <span>{t.profile.viewProfile || 'Lihat Profil'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.8rem 1.25rem',
+                            borderRadius: '14px',
+                            fontWeight: 600,
+                            fontSize: '0.88rem',
+                          }}
+                          onClick={handleClose}
+                        >
+                          {t.common.close || 'Tutup'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -687,6 +931,7 @@ export function UserProfileModal({
   userId,
   fallbackUsername,
   onClose,
+  onPostClick,
 }: UserProfileModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -704,6 +949,7 @@ export function UserProfileModal({
       userId={userId}
       fallbackUsername={fallbackUsername}
       onClose={onClose}
+      onPostClick={onPostClick}
     />,
     document.body
   );
@@ -725,7 +971,6 @@ const styles: Record<string, React.CSSProperties> = {
   modalCard: {
     position: 'relative',
     width: '100%',
-    maxWidth: '430px',
     borderRadius: '24px',
     overflow: 'hidden',
     display: 'flex',
@@ -840,7 +1085,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '0.95rem 0.6rem',
     borderRadius: '18px',
-    marginBottom: '1.35rem',
+    marginBottom: '1.25rem',
   },
   statItem: {
     display: 'flex',
@@ -866,6 +1111,139 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'var(--border-subtle)',
     opacity: 0.7,
   },
+
+  /* 3 Recent Posts Section */
+  recentPostsSection: {
+    width: '100%',
+    marginBottom: '1.25rem',
+  },
+  recentPostsHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '0.65rem',
+    padding: '0 2px',
+  },
+  recentPostsTitle: {
+    fontSize: '0.86rem',
+    fontWeight: 700,
+    fontFamily: 'var(--font-outfit)',
+    color: 'var(--heading-color)',
+    letterSpacing: '-0.01em',
+  },
+  recentPostsBadge: {
+    fontSize: '0.74rem',
+    color: 'var(--fg-muted)',
+    fontWeight: 600,
+  },
+  recentPostsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '8px',
+    width: '100%',
+  },
+  postThumbBox: {
+    position: 'relative',
+    aspectRatio: '1 / 1',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: '1px solid var(--border)',
+    boxSizing: 'border-box',
+    cursor: 'pointer',
+  },
+  postThumbImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
+  },
+  postThumbTextFallback: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '8px',
+    textAlign: 'center',
+    background: 'linear-gradient(135deg, rgba(225, 48, 108, 0.08), rgba(131, 58, 180, 0.12))',
+  },
+  postThumbIcon: {
+    fontSize: '1.1rem',
+    marginBottom: '3px',
+  },
+  postThumbTextTitle: {
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    margin: 0,
+    lineHeight: 1.25,
+    color: 'var(--heading-color)',
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+  },
+  multiPhotoBadge: {
+    position: 'absolute',
+    top: '6px',
+    right: '6px',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backdropFilter: 'blur(4px)',
+    borderRadius: '6px',
+    padding: '3px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+    pointerEvents: 'none',
+  },
+  postThumbOverlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backdropFilter: 'blur(2px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '6px',
+    textAlign: 'center',
+    zIndex: 3,
+  },
+  overlayInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  overlayTitle: {
+    margin: 0,
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: '#ffffff',
+    lineHeight: 1.25,
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+  },
+  emptyPostsBox: {
+    padding: '1.2rem 1rem',
+    borderRadius: '12px',
+    backgroundColor: 'rgba(125, 125, 125, 0.05)',
+    border: '1px dashed var(--border)',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  emptyPostsText: {
+    margin: 0,
+    fontSize: '0.8rem',
+    color: 'var(--fg-muted)',
+    fontFamily: 'var(--font-sans)',
+  },
+
   footerActions: {
     width: '100%',
   },

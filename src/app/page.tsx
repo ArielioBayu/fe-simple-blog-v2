@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useLanguage } from '@/context';
 import { postService, activityService, bookmarkService, followService } from '@/services';
@@ -15,6 +15,7 @@ import {
   UserProfileModal,
   FollowListModal,
   FeedSkeletonList,
+  PostSkeleton,
   EmptyFeedState,
   ErrorState,
   MobileBottomNav,
@@ -35,7 +36,11 @@ export default function FeedPage() {
   const [limit] = useState(5);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+
+  // Ref sentinel for IntersectionObserver infinite scrolling
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   // Filtering by hashtag
   const [activeTag, setActiveTag] = useState<string>('all');
@@ -64,12 +69,28 @@ export default function FeedPage() {
     setIsCommentDrawerOpen(false);
   };
 
-  const handleCommentCountChange = (postId: number, delta: number) => {
-    // No-op for feed page — counts are fetched per-card by PostCard itself
-    // This exists to satisfy the CommentDrawer prop contract
-    void postId;
-    void delta;
-  };
+  // Real-time comment counts map (synced instantly with CommentDrawer)
+  const [commentCounts, setCommentCounts] = useState<Record<number, number>>({});
+
+  const handleCommentCountLoaded = useCallback((postId: number, count: number) => {
+    setCommentCounts((prev) => {
+      if (prev[postId] === undefined) {
+        return { ...prev, [postId]: count };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleCommentCountChange = useCallback((postId: number, delta: number) => {
+    setCommentCounts((prev) => {
+      const current = prev[postId] ?? 0;
+      return { ...prev, [postId]: Math.max(0, current + delta) };
+    });
+  }, []);
+
+  const handleCommentCountSync = useCallback((postId: number, exactCount: number) => {
+    setCommentCounts((prev) => ({ ...prev, [postId]: exactCount }));
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -120,28 +141,32 @@ export default function FeedPage() {
   }, [authLoading, isAuthenticated, user, router]);
 
 
-  // Fetch posts effect
+  // 1. Initial Load when feedMode changes or on initial mount
   useEffect(() => {
     let ignore = false;
     if (!user) return;
 
-    async function loadPosts() {
+    async function loadInitialPosts() {
+      setLoading(true);
+      setError('');
+      setPage(1);
+
       try {
         let res: { data?: Post[] };
         if (feedMode === 'following') {
           try {
-            res = (await followService.getFeedPosts<Post[]>(page, limit)) as { data?: Post[] };
+            res = (await followService.getFeedPosts<Post[]>(1, limit)) as { data?: Post[] };
           } catch {
-            res = await postService.getAllPosts(page, limit);
+            res = await postService.getAllPosts(1, limit);
           }
         } else {
-          res = await postService.getAllPosts(page, limit);
+          res = await postService.getAllPosts(1, limit);
         }
 
         if (!ignore) {
           if (res && res.data && Array.isArray(res.data)) {
             setPosts(res.data);
-            setHasMore(res.data.length === limit);
+            setHasMore(res.data.length >= limit);
           } else {
             setPosts([]);
             setHasMore(false);
@@ -158,16 +183,86 @@ export default function FeedPage() {
       }
     }
 
-    loadPosts();
+    loadInitialPosts();
 
     return () => {
       ignore = true;
     };
-  }, [page, limit, user, feedMode]);
+  }, [user, feedMode, limit]);
 
+  // 2. Load more posts (next batch of 5 posts) when scrolling near bottom
+  const loadMorePosts = useCallback(async () => {
+    if (loading || loadingMore || !hasMore || !user) return;
+
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      // Deliberate smooth micro-loading delay (~550ms) so user perceives the elegant transition
+      const minDelayPromise = new Promise((resolve) => setTimeout(resolve, 550));
+
+      const fetchPromise = (async () => {
+        if (feedMode === 'following') {
+          try {
+            return (await followService.getFeedPosts<Post[]>(nextPage, limit)) as { data?: Post[] };
+          } catch {
+            return await postService.getAllPosts(nextPage, limit);
+          }
+        } else {
+          return await postService.getAllPosts(nextPage, limit);
+        }
+      })();
+
+      const [res] = await Promise.all([fetchPromise, minDelayPromise]);
+
+      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const incoming = res.data;
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const uniqueNew = incoming.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...uniqueNew];
+        });
+        setPage(nextPage);
+        setHasMore(incoming.length >= limit);
+      } else {
+        setHasMore(false);
+      }
+    } catch {
+      // Graceful degradation on network hiccup
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loading, loadingMore, hasMore, user, page, feedMode, limit]);
+
+  // 3. Setup IntersectionObserver for auto-triggering loadMorePosts
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMorePosts();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '120px', // Trigger as user approaches bottom so loader displays naturally
+        threshold: 0.05,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMorePosts, hasMore, loading, loadingMore]);
+
+  // 4. Refetch first page (e.g., on create post, pull-to-refresh)
   const refetchFirstPage = async () => {
     setLoading(true);
     setError('');
+    setPage(1);
     try {
       let res: { data?: Post[] };
       if (feedMode === 'following') {
@@ -182,7 +277,7 @@ export default function FeedPage() {
 
       if (res && res.data && Array.isArray(res.data)) {
         setPosts(res.data);
-        setHasMore(res.data.length === limit);
+        setHasMore(res.data.length >= limit);
       } else {
         setPosts([]);
         setHasMore(false);
@@ -318,6 +413,11 @@ export default function FeedPage() {
         onHomeClick={handleHomeRefresh}
         onEditProfile={() => setIsEditProfileOpen(true)}
         onToast={showToast}
+        onUserClick={(userId, username) => {
+          setTargetUserId(userId);
+          setTargetUsername(username);
+          setIsUserProfileOpen(true);
+        }}
       />
 
       <Navbar
@@ -325,6 +425,11 @@ export default function FeedPage() {
         onEditProfile={() => router.push('/profile')}
         onHomeClick={handleHomeRefresh}
         onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)}
+        onUserClick={(userId, username) => {
+          setTargetUserId(userId);
+          setTargetUsername(username);
+          setIsUserProfileOpen(true);
+        }}
       />
 
       <main style={styles.main} className="container">
@@ -452,6 +557,8 @@ export default function FeedPage() {
                     currentUserId={user?.id}
                     isSaved={savedPostIds.includes(post.id)}
                     isHeartAnimating={animatingPostId === post.id}
+                    commentCountOverride={commentCounts[post.id]}
+                    onCommentCountLoaded={handleCommentCountLoaded}
                     onLikeToggle={handleLikeToggle}
                     onBookmarkToggle={handleBookmarkToggle}
                     onShare={handleShare}
@@ -464,30 +571,41 @@ export default function FeedPage() {
               </div>
             )}
 
-            {/* Pagination Controls */}
+            {/* Infinite Scroll Sentinel, Loading More Indicator & End of Feed Marker */}
             {!loading && filteredPosts.length > 0 && (
-              <div style={styles.pagination}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setLoading(true);
-                    setPage(p => Math.max(p - 1, 1));
-                  }}
-                  disabled={page === 1}
-                >
-                  &larr; Previous Page
-                </button>
-                <span style={styles.pageIndicator}>Page {page}</span>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setLoading(true);
-                    setPage(p => p + 1);
-                  }}
-                  disabled={!hasMore}
-                >
-                  Next Page &rarr;
-                </button>
+              <div style={{ width: '100%', marginTop: '0.5rem' }}>
+                {/* Sentinel monitored by IntersectionObserver */}
+                <div
+                  ref={loadMoreSentinelRef}
+                  style={{ height: '24px', width: '100%', pointerEvents: 'none' }}
+                  aria-hidden="true"
+                />
+
+                {/* Smooth Animated Skeleton & Badge while fetching next 5 posts */}
+                {loadingMore && (
+                  <div className="infinite-scroll-loading-container animate-fade-in-up">
+                    <PostSkeleton />
+                    <div className="infinite-scroll-badge">
+                      <div className="infinite-scroll-spinner" />
+                      <span className="infinite-scroll-text">
+                        {t.feed.loadingMore || 'Memuat cerita berikutnya...'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Elegant End of Feed Badge when all posts are loaded */}
+                {!hasMore && !loadingMore && (
+                  <div className="feed-end-marker animate-fade-in-up">
+                    <div className="feed-end-badge">
+                      <span className="feed-end-icon">🎉</span>
+                      <div className="feed-end-info">
+                        <strong className="feed-end-title">{t.feed.allCaughtUp}</strong>
+                        <p className="feed-end-desc">Semua postingan telah berhasil ditampilkan</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -528,6 +646,10 @@ export default function FeedPage() {
         userId={targetUserId}
         fallbackUsername={targetUsername}
         onClose={() => setIsUserProfileOpen(false)}
+        onPostClick={(selectedPost) => {
+          setIsUserProfileOpen(false);
+          handleOpenCommentDrawer(selectedPost);
+        }}
       />
 
       {/* Followers & Following List Modal for Logged-In User */}
@@ -570,6 +692,7 @@ export default function FeedPage() {
         onClose={handleCloseCommentDrawer}
         onToast={showToast}
         onCommentCountChange={handleCommentCountChange}
+        onCommentCountSync={handleCommentCountSync}
         savedPostIds={savedPostIds}
         onLikeToggled={(postId, newIsLiked) => {
           setPosts(prev =>
@@ -635,18 +758,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '1.5rem',
-  },
-  pagination: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '1.25rem',
-    marginTop: '1.5rem',
-  },
-  pageIndicator: {
-    fontSize: '0.9rem',
-    fontWeight: 700,
-    color: 'var(--fg-muted)',
   },
   loadingContainer: {
     textAlign: 'center',

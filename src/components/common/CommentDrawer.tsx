@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import Link from 'next/link';
 import { Post, Comment, CommentReply } from '@/types';
-import { commentService, uploadService, activityService, bookmarkService } from '@/services';
+import { commentService, uploadService, activityService, bookmarkService, postService } from '@/services';
 import { CommentList, ReplyTarget } from '@/components/post/CommentList';
 import { ImageCarousel } from '@/components/common/ImageCarousel';
 import { useAuth } from '@/context';
@@ -22,6 +22,8 @@ interface CommentDrawerProps {
   onToast: (msg: string) => void;
   /** Notify parent that a comment was added/removed so feed card count updates */
   onCommentCountChange?: (postId: number, delta: number) => void;
+  /** Notify parent with exact count from server when synced */
+  onCommentCountSync?: (postId: number, exactCount: number) => void;
   /** Notify parent that like state changed so feed card updates */
   onLikeToggled?: (postId: number, newIsLiked: boolean) => void;
   /** Notify parent that bookmark state changed so feed card updates */
@@ -55,6 +57,7 @@ export function CommentDrawer({
   onClose,
   onToast,
   onCommentCountChange,
+  onCommentCountSync,
   onLikeToggled,
   onBookmarkToggled,
   savedPostIds = [],
@@ -259,6 +262,7 @@ export function CommentDrawer({
         ),
       );
       setActiveReplyCommentId(targetCommentId);
+      onCommentCountChange?.(post.id, 1);
       setInputValue('');
       setReplyTarget(null);
 
@@ -267,8 +271,18 @@ export function CommentDrawer({
         onToast('Balasan berhasil dikirim!');
         // Silently re-fetch to sync canonical database IDs
         await fetchComments(1, false);
+        // Sync exact database count
+        try {
+          const fresh = await postService.getCommentCount(post.id);
+          if (fresh.data?.comment_count !== undefined) {
+            onCommentCountSync?.(post.id, fresh.data.comment_count);
+          }
+        } catch {
+          // ignore
+        }
       } catch (err: unknown) {
         onToast(err instanceof Error ? err.message : 'Gagal mengirim balasan.');
+        onCommentCountChange?.(post.id, -1);
         await fetchComments(1, false);
       } finally {
         setSubmitLoading(false);
@@ -298,6 +312,15 @@ export function CommentDrawer({
         onToast('Komentar berhasil dikirim!');
         // Silently re-fetch to sync canonical database record
         await fetchComments(1, false);
+        // Sync exact database count
+        try {
+          const fresh = await postService.getCommentCount(post.id);
+          if (fresh.data?.comment_count !== undefined) {
+            onCommentCountSync?.(post.id, fresh.data.comment_count);
+          }
+        } catch {
+          // ignore
+        }
       } catch (err: unknown) {
         onToast(err instanceof Error ? err.message : 'Gagal mengirim komentar.');
         onCommentCountChange?.(post.id, -1);
@@ -309,10 +332,20 @@ export function CommentDrawer({
   };
 
   // ── Comment CRUD callbacks ────────────────────────────────────────────────
-  const handleCommentDeleted = useCallback((commentId: number) => {
+  const handleCommentDeleted = useCallback(async (commentId: number) => {
     setComments(prev => prev.filter(c => c.id !== commentId));
-    if (post) onCommentCountChange?.(post.id, -1);
-  }, [post, onCommentCountChange]);
+    if (post) {
+      onCommentCountChange?.(post.id, -1);
+      try {
+        const fresh = await postService.getCommentCount(post.id);
+        if (fresh.data?.comment_count !== undefined) {
+          onCommentCountSync?.(post.id, fresh.data.comment_count);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [post, onCommentCountChange, onCommentCountSync]);
 
   const handleCommentUpdated = useCallback((commentId: number, content: string) => {
     setComments(prev =>
@@ -408,11 +441,12 @@ export function CommentDrawer({
 
         .igm-carousel-box .image-carousel-wrap {
           width: 100% !important;
+          height: 100% !important;
           max-width: 100% !important;
           max-height: 100% !important;
-          aspect-ratio: 16 / 10 !important;
-          height: auto !important;
+          aspect-ratio: unset !important;
           border-radius: 0 !important;
+          background-color: transparent !important;
         }
 
         /* ── Right: Info + Comments panel (enlarged width, comfortable reading) ── */
@@ -792,9 +826,9 @@ export function CommentDrawer({
             border-radius: 0;
           }
           .igm-left {
-            aspect-ratio: 16 / 10;
+            aspect-ratio: auto;
             width: 100%;
-            height: auto;
+            height: 42vh;
             max-height: 42vh;
             max-width: 100%;
             flex: none;
@@ -841,9 +875,10 @@ export function CommentDrawer({
               <ImageCarousel
                 media={mediaList}
                 altText={post.post_title}
-                aspectRatio="16 / 10"
+                aspectRatio="auto"
                 maxHeight="100%"
-                style={{ width: '100%', height: 'auto', borderRadius: 0 }}
+                objectFit="contain"
+                style={{ width: '100%', height: '100%', borderRadius: 0 }}
               />
             </div>
           ) : (

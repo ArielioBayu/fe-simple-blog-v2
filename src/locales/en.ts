@@ -37,6 +37,7 @@ export const en: LocaleTranslations = {
     profilePage: 'Profile Page',
     welcome: 'Welcome,',
     backToFeed: 'Back to Feed',
+    backToHome: 'Back to Home',
   },
   feed: {
     forYou: 'For You',
@@ -161,6 +162,8 @@ export const en: LocaleTranslations = {
     viewFollowers: 'View followers list',
     viewFollowing: 'View following list',
     clickToEditProfile: 'Click to edit profile',
+    recentPosts: 'Recent Posts',
+    noPostsYet: 'No stories shared yet',
   },
   auth: {
     loginTitle: 'Welcome Back',
@@ -180,5 +183,19 @@ export const en: LocaleTranslations = {
     refreshFeed: 'Refreshing feed...',
     messagesPending: 'Messages feature is coming in a future update.',
     searchPending: 'Search feature is coming in a future update.',
+  },
+  search: {
+    placeholder: 'Search users...',
+    title: 'Search Users',
+    subtitle: 'Find creators and friends on SimpleBlog',
+    noResults: 'No Users Found',
+    noResultsDesc: 'No accounts matching keyword',
+    hint: 'Type a name or @username to discover creators and friends.',
+    emptyHintTitle: 'Find Creators & Friends',
+    verified: 'Verified',
+    privateAccount: 'Private Account',
+    following: 'Following',
+    searching: 'Searching...',
+    viewProfile: 'View Profile',
   },
 };

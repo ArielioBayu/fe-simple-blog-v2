@@ -5,17 +5,21 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth, useTheme, useLanguage } from '@/context';
 import { uploadService, followService } from '@/services';
 import { FollowRequestsModal } from './FollowRequestsModal';
+import { SearchUserModal } from './SearchUserModal';
+import { UserProfileModal } from './UserProfileModal';
 
 interface LeftNavSidebarProps {
   onHomeClick?: () => void;
   onEditProfile?: () => void;
   onToast?: (message: string) => void;
+  onUserClick?: (userId: number, username?: string) => void;
 }
 
 export function LeftNavSidebar({
   onHomeClick,
   onEditProfile,
   onToast,
+  onUserClick,
 }: LeftNavSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -27,6 +31,9 @@ export function LeftNavSidebar({
   const [avatarError, setAvatarError] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [selectedSearchUserId, setSelectedSearchUserId] = useState<number | null>(null);
+  const [selectedSearchUsername, setSelectedSearchUsername] = useState<string | undefined>(undefined);
   const othersMenuRef = useRef<HTMLDivElement>(null);
   const othersBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -98,7 +105,7 @@ export function LeftNavSidebar({
   };
 
   const handleSearchClick = () => {
-    notify(t.toast.searchPending);
+    setIsSearchModalOpen(true);
   };
 
   const handleNotificationClick = () => {
@@ -451,6 +458,33 @@ export function LeftNavSidebar({
         onClose={() => setIsRequestsModalOpen(false)}
         onRequestHandled={refreshRequestsCount}
       />
+
+      {/* Server-Side User Search Modal */}
+      <SearchUserModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectUser={(selectedUser) => {
+          if (onUserClick) {
+            onUserClick(selectedUser.id, selectedUser.username);
+          } else {
+            setSelectedSearchUserId(selectedUser.id);
+            setSelectedSearchUsername(selectedUser.username);
+          }
+        }}
+      />
+
+      {/* Fallback UserProfileModal if onUserClick is not passed */}
+      {selectedSearchUserId && !onUserClick && (
+        <UserProfileModal
+          isOpen={true}
+          userId={selectedSearchUserId}
+          fallbackUsername={selectedSearchUsername}
+          onClose={() => {
+            setSelectedSearchUserId(null);
+            setSelectedSearchUsername(undefined);
+          }}
+        />
+      )}
     </aside>
   );
 }

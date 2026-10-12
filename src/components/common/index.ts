@@ -19,6 +19,8 @@ export * from './FollowRequestsModal';
 export * from './FollowButton';
 export * from './PrivateAccountLocked';
 export * from './PrivacySettingsToggle';
+export * from './NavbarUserSearch';
+export * from './SearchUserModal';
 export * from './Button';
 export * from './FormField';
 export * from './EmptyState';

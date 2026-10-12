@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context';
+import { useAuth, useLanguage } from '@/context';
 import { postService, commentService, activityService, bookmarkService } from '@/services';
 import { CommentPagedResponse } from '@/services/comment.service';
 import {
@@ -25,6 +25,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const postId = resolvedParams.id;
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   // ── Post data ─────────────────────────────────────────────────────────────
   const [postData, setPostData] = useState<PostDetailResponseData | null>(null);
@@ -302,12 +303,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <Navbar showBackToFeed onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)} />
         <main style={styles.main} className="container">
           <div style={styles.breadcrumbBar}>
-            <Link href="/" style={styles.backBtn}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              <span>Back to Feed</span>
+            <Link href="/" className="profile-back-btn" aria-label={t.nav.backToFeed}>
+              <span className="profile-back-icon-badge" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+              </span>
+              <span className="profile-back-btn-label">{t.nav.backToFeed}</span>
             </Link>
           </div>
           <PostSkeleton />
@@ -323,12 +326,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <Navbar showBackToFeed onThemeToggled={(theme) => showToast(`Switched to ${theme} mode`)} />
         <main style={styles.main} className="container">
           <div style={styles.breadcrumbBar}>
-            <Link href="/" style={styles.backBtn}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              <span>Back to Feed</span>
+            <Link href="/" className="profile-back-btn" aria-label={t.nav.backToFeed}>
+              <span className="profile-back-icon-badge" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+              </span>
+              <span className="profile-back-btn-label">{t.nav.backToFeed}</span>
             </Link>
           </div>
           <ErrorState
@@ -363,21 +368,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       <main style={styles.main} className="container">
         {/* Breadcrumb */}
         <div style={styles.breadcrumbBar}>
-          <Link href="/" style={styles.backBtn}>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="19" y1="12" x2="5" y2="12" />
-              <polyline points="12 19 5 12 12 5" />
-            </svg>
-            <span>Back to Feed</span>
+          <Link href="/" className="profile-back-btn" aria-label={t.nav.backToFeed}>
+            <span className="profile-back-icon-badge" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+            </span>
+            <span className="profile-back-btn-label">{t.nav.backToFeed}</span>
           </Link>
         </div>
 

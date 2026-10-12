@@ -12,6 +12,7 @@ interface MobileBottomNavProps {
   onCreateClick: () => void;
   onSavedClick: () => void;
   onProfileClick: () => void;
+  onSearchClick?: () => void;
 }
 
 export function MobileBottomNav({
@@ -21,6 +22,7 @@ export function MobileBottomNav({
   onCreateClick,
   onSavedClick,
   onProfileClick,
+  onSearchClick,
 }: MobileBottomNavProps) {
   const { t } = useLanguage();
   const [avatarError, setAvatarError] = useState(false);
@@ -45,17 +47,17 @@ export function MobileBottomNav({
         </svg>
       </button>
 
-      {/* Explore Tab */}
+      {/* Explore / Search Tab */}
       <button
         type="button"
         style={styles.navBtn}
-        onClick={onHomeClick}
-        aria-label={t.nav.explore}
-        title={t.nav.explore}
+        onClick={onSearchClick || onHomeClick}
+        aria-label={t.nav.search}
+        title={t.nav.search}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
       </button>
 

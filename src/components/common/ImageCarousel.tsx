@@ -25,20 +25,23 @@ interface ImageCarouselProps {
 export function ImageCarousel({
   media,
   altText = 'Post image',
-  aspectRatio = '16 / 10',
-  maxHeight = '460px',
+  aspectRatio = 'auto',
+  maxHeight = '620px',
   onImageClick,
   autoPlayInterval = 4500,
   className = '',
   style,
-  objectFit = 'cover',
+  objectFit = 'contain',
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [detectedRatio, setDetectedRatio] = useState<string | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const transitionLockRef = useRef(false);
 
   // Normalize media items to string file paths
@@ -50,6 +53,26 @@ export function ImageCarousel({
     .filter(Boolean);
 
   const total = images.length;
+
+  const isAuto = !aspectRatio || aspectRatio === 'auto';
+  const effectiveRatio = isAuto ? (detectedRatio || undefined) : aspectRatio;
+
+  // Auto-detect image's natural aspect ratio so it displays in original dimensions without cropping
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalWidth && naturalHeight && isAuto) {
+      setDetectedRatio(`${naturalWidth} / ${naturalHeight}`);
+    }
+  };
+
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete && isAuto) {
+      const { naturalWidth, naturalHeight } = imgRef.current;
+      if (naturalWidth && naturalHeight) {
+        setDetectedRatio(`${naturalWidth} / ${naturalHeight}`);
+      }
+    }
+  }, [images, isAuto]);
 
   // Navigate with a lock to prevent overlapping transitions
   const navigateTo = useCallback((nextIdx: number) => {
@@ -122,30 +145,48 @@ export function ImageCarousel({
 
   if (total === 0) return null;
 
-  // ── Single Image: clean, no chrome ──────────────────────────────────────
+  // ── Single Image: clean, uncropped, adaptive ratio ──────────────────────
   if (total === 1) {
     const src = uploadService.getImageUrl(images[0]) || images[0];
     return (
       <div
-        style={{ ...styles.outerWrap, aspectRatio, maxHeight, ...style }}
+        style={{
+          ...styles.outerWrap,
+          ...(effectiveRatio ? { aspectRatio: effectiveRatio } : {}),
+          maxHeight,
+          ...style,
+        }}
         className={`image-carousel-wrap ${className}`}
         onClick={() => onImageClick?.(0)}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={altText} style={{ ...styles.slideImg, objectFit }} loading="lazy" />
+        <img
+          ref={imgRef}
+          src={src}
+          alt={altText}
+          onLoad={handleImageLoad}
+          style={{
+            ...styles.slideImg,
+            objectFit,
+          }}
+          loading="lazy"
+        />
       </div>
     );
   }
 
   // ── Multi-Image: Sliding Strip Carousel ─────────────────────────────────
-  // All images sit side-by-side in a long strip.
-  // Only the strip's translateX changes — one smooth CSS transition, zero jank.
   const translateX = -(currentIndex * 100);
 
   return (
     <div
       ref={containerRef}
-      style={{ ...styles.outerWrap, aspectRatio, maxHeight, ...style }}
+      style={{
+        ...styles.outerWrap,
+        ...(effectiveRatio ? { aspectRatio: effectiveRatio } : {}),
+        maxHeight,
+        ...style,
+      }}
       className={`image-carousel-wrap ${className}`}
       tabIndex={0}
       role="region"
@@ -160,16 +201,14 @@ export function ImageCarousel({
     >
       <style>{`
         /* ================================================================
-           ImageCarousel — Sliding Strip with Premium Easing
+           ImageCarousel — Sliding Strip with Premium Easing & Original Sizing
            All slides lay side-by-side; the strip translates as one unit.
-           Result: perfectly sync'd, physically accurate, zero jank.
         ================================================================ */
 
         .carousel-strip {
           display: flex;
           width: 100%;
           height: 100%;
-          /* Apple-grade spring easing: fast start, smooth deceleration */
           transition: transform 0.58s cubic-bezier(0.42, 0, 0.12, 1);
           will-change: transform;
         }
@@ -180,18 +219,24 @@ export function ImageCarousel({
           height: 100%;
           position: relative;
           overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #0c0d12;
         }
 
         .carousel-slide img {
           width: 100%;
           height: 100%;
+          max-width: 100%;
+          max-height: 100%;
           object-fit: ${objectFit};
           display: block;
-          /* Subtle scale effect on the non-active slides for depth perception */
+          margin: 0 auto;
           transition: transform 0.58s cubic-bezier(0.42, 0, 0.12, 1),
                       filter 0.58s cubic-bezier(0.42, 0, 0.12, 1);
-          transform: scale(1.03);
-          filter: brightness(0.88);
+          transform: scale(1.02);
+          filter: brightness(0.9);
         }
 
         .carousel-slide.active img {
@@ -204,10 +249,10 @@ export function ImageCarousel({
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
-          width: 28px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.92);
+          background: rgba(255, 255, 255, 0.94);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           border: none;
@@ -218,7 +263,7 @@ export function ImageCarousel({
           cursor: pointer;
           z-index: 5;
           padding: 0;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.12);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.12);
           transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
                       opacity 0.22s ease,
                       background-color 0.18s ease;
@@ -227,25 +272,25 @@ export function ImageCarousel({
         }
 
         .image-carousel-wrap:hover .ig-carousel-btn {
-          opacity: 0.92;
+          opacity: 0.95;
         }
 
         .ig-carousel-btn:hover {
           opacity: 1 !important;
           background: #ffffff;
           transform: translateY(-50%) scale(1.1);
-          box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+          box-shadow: 0 6px 18px rgba(0,0,0,0.35);
         }
 
         .ig-carousel-btn:active {
           transform: translateY(-50%) scale(0.93);
         }
 
-        .ig-carousel-prev { left: 10px; }
-        .ig-carousel-next { right: 10px; }
+        .ig-carousel-prev { left: 12px; }
+        .ig-carousel-next { right: 12px; }
 
         @media (hover: none) {
-          .ig-carousel-btn { opacity: 0.82; }
+          .ig-carousel-btn { opacity: 0.85; }
         }
 
         /* ── Progress Bar Indicator ─────────────────────────────────── */
@@ -305,9 +350,11 @@ export function ImageCarousel({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
+                ref={idx === 0 ? imgRef : undefined}
                 src={imgSrc}
                 alt={`${altText} — Foto ${idx + 1}`}
                 loading={idx === 0 ? 'eager' : 'lazy'}
+                onLoad={idx === 0 ? handleImageLoad : undefined}
               />
             </div>
           );
@@ -327,7 +374,7 @@ export function ImageCarousel({
         aria-label="Foto sebelumnya"
         title="Foto sebelumnya"
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
           stroke="#1c1e21" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
         </svg>
@@ -338,39 +385,42 @@ export function ImageCarousel({
         type="button"
         className="ig-carousel-btn ig-carousel-next"
         onClick={handleNext}
-        aria-label="Foto selanjutnya"
-        title="Foto selanjutnya"
+        aria-label="Foto berikutnya"
+        title="Foto berikutnya"
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
           stroke="#1c1e21" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="9 18 15 12 9 6" />
         </svg>
       </button>
 
-      {/* ── Dot Indicators (bottom) ──────────────────────────────────── */}
-      <div style={styles.dotsContainer}>
-        {images.map((_, idx) => (
-          <button
-            key={idx}
-            type="button"
-            className={`ig-carousel-dot ${idx === currentIndex ? 'active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              navigateTo(idx);
-            }}
-            aria-label={`Buka slide ${idx + 1}`}
+      {/* ── Top Progress Bar ─────────────────────────────────────────── */}
+      {total > 1 && (
+        <div className="ig-progress-bar-track">
+          <div
+            className="ig-progress-bar-fill"
+            style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
           />
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* ── Bottom Progress Bar ──────────────────────────────────────── */}
-      <div className="ig-progress-bar-track">
-        <div
-          className="ig-progress-bar-fill"
-          style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
-        />
-      </div>
+      {/* ── Dot Indicators (bottom-center) ───────────────────────────── */}
+      {total > 1 && total <= 10 && (
+        <div style={styles.dotsContainer}>
+          {images.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`ig-carousel-dot ${idx === currentIndex ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigateTo(idx);
+              }}
+              aria-label={`Buka foto ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -382,14 +432,19 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-md, 12px)',
     overflow: 'hidden',
     backgroundColor: '#0c0d12',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     userSelect: 'none',
     outline: 'none',
   },
   slideImg: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
+    maxHeight: '100%',
+    objectFit: 'contain',
     display: 'block',
+    margin: '0 auto',
   },
   counterBadge: {
     position: 'absolute',
