@@ -1,4 +1,5 @@
 export * from './ThemeToggle';
+export * from './LanguageToggle';
 export * from './Toast';
 export * from './Navbar';
 export * from './EditProfileModal';

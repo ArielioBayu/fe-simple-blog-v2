@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useTheme } from '@/context';
+import { useTheme, useLanguage } from '@/context';
 import { followService, uploadService } from '@/services';
 import { FollowRequestItem } from '@/types';
 
@@ -19,6 +19,7 @@ function FollowRequestsModalContent({
   onUserSelect,
 }: Omit<FollowRequestsModalProps, 'isOpen'>) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
 
   const [requests, setRequests] = useState<FollowRequestItem[]>([]);
@@ -202,7 +203,7 @@ function FollowRequestsModalContent({
                   letterSpacing: '-0.01em',
                 }}
               >
-                Permintaan Mengikuti
+                {t.follow.pendingRequests}
               </h3>
               <p
                 style={{
@@ -211,14 +212,14 @@ function FollowRequestsModalContent({
                   color: 'var(--fg-muted)',
                 }}
               >
-                Kelola orang yang ingin mengikuti akun privat Anda
+                {t.follow.pendingRequestsDesc}
               </p>
             </div>
             <button
               type="button"
               onClick={handleClose}
-              aria-label="Tutup modal"
-              title="Tutup (Esc)"
+              aria-label={t.common.close}
+              title={`${t.common.close} (Esc)`}
               style={{
                 width: '36px',
                 height: '36px',
@@ -327,17 +328,17 @@ function FollowRequestsModalContent({
                   onClick={loadRequests}
                   style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}
                 >
-                  Coba Lagi
+                  {t.common.retry}
                 </button>
               </div>
             ) : requests.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--fg-muted)' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📭</div>
                 <h4 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--heading-color)', margin: '0 0 0.25rem' }}>
-                  Tidak Ada Permintaan
+                  {t.follow.noRequests}
                 </h4>
                 <p style={{ fontSize: '0.82rem', margin: 0 }}>
-                  Saat pengguna meminta untuk mengikuti akun privat Anda, permintaan tersebut akan muncul di sini.
+                  {t.follow.noRequestsDesc}
                 </p>
               </div>
             ) : (
@@ -450,7 +451,7 @@ function FollowRequestsModalContent({
                             cursor: 'pointer',
                           }}
                         >
-                          {isProcessing ? '...' : 'Konfirmasi'}
+                          {isProcessing ? '...' : t.follow.accept}
                         </button>
                         <button
                           type="button"
@@ -468,7 +469,7 @@ function FollowRequestsModalContent({
                             transition: 'all 0.18s ease',
                           }}
                         >
-                          Hapus
+                          {t.follow.reject}
                         </button>
                       </div>
                     </div>

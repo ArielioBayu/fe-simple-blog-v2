@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Post } from '@/types';
 import { postService, uploadService } from '@/services';
 import { PostMenuDropdown, ImageCarousel } from '@/components/common';
+import { useLanguage } from '@/context';
 
 interface PostCardProps {
   post: Post;
@@ -35,6 +36,7 @@ export function PostCard({
   onDeletePost,
   onCommentClick,
 }: PostCardProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const isAuthor = Boolean(currentUserId && post.user_id && currentUserId === post.user_id);
   const [likeCount, setLikeCount] = useState<number | null>(null);
@@ -238,8 +240,8 @@ export function PostCard({
               color: post.is_liked ? 'var(--ig-heart)' : 'var(--fg-muted)',
             }}
             className={isHeartAnimating ? 'animate-heart-pop' : ''}
-            title={post.is_liked ? 'Unlike' : 'Like'}
-            aria-label={post.is_liked ? 'Unlike cerita ini' : 'Sukai cerita ini'}
+            title={post.is_liked ? t.post.unlike : t.post.like}
+            aria-label={post.is_liked ? t.post.unlikeAction : t.post.likeAction}
           >
             <svg
               width="23"
@@ -266,8 +268,8 @@ export function PostCard({
             type="button"
             onClick={() => onCommentClick?.(post)}
             style={styles.actionIconBtn}
-            title="Lihat komentar"
-            aria-label={`Buka komentar untuk postingan ${post.post_title}`}
+            title={t.post.comment}
+            aria-label={`${t.post.commentAction} ${post.post_title}`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -281,8 +283,8 @@ export function PostCard({
           <button
             onClick={() => onShare(post.id, post.post_title)}
             style={styles.actionIconBtn}
-            title="Bagikan cerita"
-            aria-label="Bagikan tautan cerita ini"
+            title={t.post.share}
+            aria-label={t.post.shareStory}
           >
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -298,8 +300,8 @@ export function PostCard({
             ...styles.actionIconBtn,
             color: isSaved ? 'var(--secondary)' : 'var(--fg-muted)',
           }}
-          title={isSaved ? 'Hapus Simpanan' : 'Simpan Cerita'}
-          aria-label={isSaved ? 'Hapus cerita dari tersimpan' : 'Simpan cerita ini'}
+          title={isSaved ? t.post.removeSavedStory : t.post.saveStory}
+          aria-label={isSaved ? t.post.removeSavedStory : t.post.saveStory}
         >
           <svg
             width="22"
@@ -322,13 +324,13 @@ export function PostCard({
           <span style={styles.likesText}>
             {likeCount !== null ? (
               <>
-                <strong>{likeCount}</strong> {likeCount === 1 ? 'like' : 'likes'}
-                {post.is_liked && ' • Liked by you'}
+                <strong>{likeCount}</strong> {t.post.likesCount}
+                {post.is_liked && ` • ${t.post.likedByYou}`}
               </>
             ) : post.is_liked ? (
-              'Liked by you'
+              t.post.likedByYou
             ) : (
-              'Be the first to like'
+              t.post.beTheFirstToLike
             )}
           </span>
         </div>
@@ -339,8 +341,8 @@ export function PostCard({
           style={styles.viewCommentsLink}
         >
           {commentCount !== null && commentCount > 0
-            ? `View all ${commentCount} comments →`
-            : 'View full story & comments →'}
+            ? t.post.viewAllComments.replace('{count}', String(commentCount))
+            : t.post.viewFullStoryAndComments}
         </button>
       </div>
     </article>

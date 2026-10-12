@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useTheme } from '@/context';
+import { useTheme, useLanguage } from '@/context';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export interface PostMenuDropdownProps {
@@ -23,6 +23,7 @@ export function PostMenuDropdown({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
 
   // Close on outside click or ESC key
@@ -80,8 +81,8 @@ export function PostMenuDropdown({
         }}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        aria-label="Opsi postingan"
-        title="Opsi postingan"
+        aria-label={t.post.postOptions}
+        title={t.post.postOptions}
         style={{
           width: '32px',
           height: '32px',
@@ -181,7 +182,7 @@ export function PostMenuDropdown({
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            {isSaved ? 'Hapus dari favorit' : 'Simpan ke favorit'}
+            {isSaved ? t.post.removeFromFavorites : t.post.saveToFavorites}
           </button>
 
           {/* Menu 2: Bagikan (Text-only) */}
@@ -214,7 +215,7 @@ export function PostMenuDropdown({
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            Bagikan
+            {t.post.sharePostItem}
           </button>
 
           {/* Menu 3: Hapus (Khusus author pembuat postingan, text-only) */}
@@ -256,7 +257,7 @@ export function PostMenuDropdown({
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
-                Hapus
+                {t.post.deletePostItem}
               </button>
             </>
           )}

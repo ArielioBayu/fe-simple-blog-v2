@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context';
+import { useAuth, useLanguage } from '@/context';
 import { postService, activityService, bookmarkService, followService } from '@/services';
 import {
   Navbar,
@@ -27,6 +27,7 @@ import { Post, CreatePostRequest } from '@/types';
 export default function FeedPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { t } = useLanguage();
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [feedMode, setFeedMode] = useState<'explore' | 'following'>('explore');
@@ -367,7 +368,7 @@ export default function FeedPage() {
                       <circle cx="12" cy="12" r="10" />
                       <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
                     </svg>
-                    <span>Untuk Anda</span>
+                    <span>{t.feed.forYou}</span>
                   </button>
 
                   <button
@@ -397,15 +398,15 @@ export default function FeedPage() {
                       <circle cx="11" cy="7" r="4" />
                       <polyline points="17 11 19 13 23 9" />
                     </svg>
-                    <span>Mengikuti</span>
+                    <span>{t.feed.following}</span>
                   </button>
                 </div>
                 <p style={styles.feedSubtitle}>
                   {feedMode === 'explore'
                     ? (activeTag === 'all'
-                        ? 'Postingan terbaru dan cerita dari seluruh komunitas'
-                        : `Menampilkan artikel dengan tagar #${activeTag}`)
-                    : 'Postingan cerita dari kreator yang Anda ikuti'}
+                        ? t.feed.allCaughtUp
+                        : `Tag #${activeTag}`)
+                    : t.feed.noFollowingPostsDesc}
                 </p>
               </div>
 

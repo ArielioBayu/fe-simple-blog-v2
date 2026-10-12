@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth, useTheme } from '@/context';
+import { useAuth, useTheme, useLanguage } from '@/context';
 import { uploadService, followService } from '@/services';
 import { FollowRequestsModal } from './FollowRequestsModal';
 
@@ -21,6 +21,7 @@ export function LeftNavSidebar({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage, t } = useLanguage();
 
   const [isOthersMenuOpen, setIsOthersMenuOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -85,7 +86,7 @@ export function LeftNavSidebar({
       if (onHomeClick) {
         onHomeClick();
       }
-      notify('Menyegarkan beranda feed...');
+      notify(t.toast.refreshFeed);
     } else {
       router.push('/');
     }
@@ -93,11 +94,11 @@ export function LeftNavSidebar({
 
   // 2. Placeholder handlers for pending backend features
   const handleMessageClick = () => {
-    notify('Fitur Pesan segera hadir di pembaruan backend.');
+    notify(t.toast.messagesPending);
   };
 
   const handleSearchClick = () => {
-    notify('Fitur Pencarian segera hadir di pembaruan backend.');
+    notify(t.toast.searchPending);
   };
 
   const handleNotificationClick = () => {
@@ -110,29 +111,49 @@ export function LeftNavSidebar({
 
   const handleThemeToggleClick = () => {
     toggleTheme();
-    notify(`Beralih ke mode ${theme === 'dark' ? 'Terang' : 'Gelap'}`);
+    notify(theme === 'dark' ? t.nav.themeLight : t.nav.themeDark);
+    setIsOthersMenuOpen(false);
+  };
+
+  const handleLanguageToggleClick = () => {
+    toggleLanguage();
+    notify(language === 'id' ? 'Switched to English' : 'Beralih ke Bahasa Indonesia');
     setIsOthersMenuOpen(false);
   };
 
   const handleLogout = () => {
-    setIsOthersMenuOpen(false);
     logout();
-    notify('Berhasil keluar dari sesi akun.');
+    setIsOthersMenuOpen(false);
   };
 
   return (
-    <aside
-      className="left-nav-sidebar"
-      aria-label="Sidebar Navigasi Kiri"
-    >
-      {/* Menu Utama (Persis sesuai referensi: Home, Messages, Search, Notifications, Profile) */}
+    <aside className="left-nav-sidebar" aria-label="Main Navigation">
+      {/* Brand Logo - Official SimpleBlog Emblem */}
+      <div className="left-nav-brand">
+        <a href="/" onClick={handleHomeNavigation} className="left-nav-logo-link" title="SimpleBlog">
+          <div className="left-nav-icon-wrap left-nav-logo-icon">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo.png"
+              alt="SimpleBlog Logo"
+              className="left-nav-brand-img"
+            />
+          </div>
+          <span className="left-nav-brand-text">
+            <span className="left-nav-logo-simple">Simple</span>
+            <span className="left-nav-logo-blog">Blog</span>
+          </span>
+        </a>
+      </div>
+
+      {/* Main Nav Items */}
       <nav className="left-nav-menu">
         {/* 1. Home */}
         <button
           type="button"
           className={`left-nav-item ${isHomeActive ? 'active' : ''}`}
           onClick={handleHomeNavigation}
-          title="Home"
+          title={t.nav.home}
           id="sidebar-home-btn"
         >
           <div className="left-nav-icon-wrap">
@@ -157,7 +178,7 @@ export function LeftNavSidebar({
               )}
             </svg>
           </div>
-          <span className="left-nav-label">Home</span>
+          <span className="left-nav-label">{t.nav.home}</span>
         </button>
 
         {/* 2. Messages */}
@@ -165,7 +186,7 @@ export function LeftNavSidebar({
           type="button"
           className="left-nav-item"
           onClick={handleMessageClick}
-          title="Messages"
+          title={t.nav.messages}
           id="sidebar-messages-btn"
         >
           <div className="left-nav-icon-wrap">
@@ -183,10 +204,9 @@ export function LeftNavSidebar({
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
-            {/* Red badge with counter 3 */}
             <span className="left-nav-badge">3</span>
           </div>
-          <span className="left-nav-label">Messages</span>
+          <span className="left-nav-label">{t.nav.messages}</span>
         </button>
 
         {/* 3. Search */}
@@ -194,7 +214,7 @@ export function LeftNavSidebar({
           type="button"
           className="left-nav-item"
           onClick={handleSearchClick}
-          title="Search"
+          title={t.nav.search}
           id="sidebar-search-btn"
         >
           <div className="left-nav-icon-wrap">
@@ -213,7 +233,7 @@ export function LeftNavSidebar({
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </div>
-          <span className="left-nav-label">Search</span>
+          <span className="left-nav-label">{t.nav.search}</span>
         </button>
 
         {/* 4. Notifications */}
@@ -221,7 +241,7 @@ export function LeftNavSidebar({
           type="button"
           className="left-nav-item"
           onClick={handleNotificationClick}
-          title="Notifications"
+          title={t.nav.notifications}
           id="sidebar-notifications-btn"
         >
           <div className="left-nav-icon-wrap">
@@ -238,12 +258,11 @@ export function LeftNavSidebar({
             >
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
-            {/* Dynamic notification badge */}
             {requestCount > 0 && (
               <span className="left-nav-badge">{requestCount}</span>
             )}
           </div>
-          <span className="left-nav-label">Notifications</span>
+          <span className="left-nav-label">{t.nav.notifications}</span>
         </button>
 
         {/* 5. Profile */}
@@ -251,42 +270,37 @@ export function LeftNavSidebar({
           type="button"
           className={`left-nav-item ${isProfileActive ? 'active' : ''}`}
           onClick={handleProfileClick}
-          title="Profile"
+          title={t.nav.profile}
           id="sidebar-profile-btn"
         >
           <div className="left-nav-icon-wrap">
-            <div className={`left-nav-avatar-ring ${isProfileActive ? 'active-ring' : ''}`}>
+            <div className={`left-nav-avatar-ring ${isProfileActive ? 'active' : ''}`}>
               {avatarSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarSrc}
-                  alt={user?.username || 'User'}
-                  onError={() => setAvatarError(true)}
+                  alt={user?.username || 'Profile'}
                   className="left-nav-avatar-img"
+                  onError={() => setAvatarError(true)}
                 />
               ) : (
-                <span className="left-nav-avatar-initial">
+                <div className="left-nav-avatar-initials">
                   {(user?.username || 'U').substring(0, 1).toUpperCase()}
-                </span>
+                </div>
               )}
             </div>
           </div>
-          <span className="left-nav-label">Profile</span>
+          <span className="left-nav-label">{t.nav.profile}</span>
         </button>
       </nav>
 
-      {/* Bagian Bawah: Others (Lainnya) */}
+      {/* Footer Controls: Language + Others Popover */}
       <div className="left-nav-footer">
-        {/* Popover Dropdown when Others is clicked */}
+        {/* Others Popover Menu */}
         {isOthersMenuOpen && (
-          <div
-            ref={othersMenuRef}
-            className="left-nav-others-popover animate-popover"
-            role="dialog"
-            aria-label="Menu Lainnya"
-          >
+          <div ref={othersMenuRef} className="left-nav-popover animate-scale-in" role="menu">
             <div className="left-nav-popover-header">
-              <span className="left-nav-popover-user">
+              <span className="left-nav-popover-username">
                 @{user?.username || 'Pengguna'}
               </span>
               <span className="left-nav-popover-email">
@@ -296,6 +310,28 @@ export function LeftNavSidebar({
 
             <div className="left-nav-popover-divider" />
 
+            {/* Language Switcher */}
+            <button
+              type="button"
+              className="left-nav-popover-item"
+              onClick={handleLanguageToggleClick}
+            >
+              <div className="left-nav-popover-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span>{t.nav.language}</span>
+                <span style={{ fontSize: '0.74rem', padding: '2px 7px', borderRadius: '9999px', background: 'var(--brand-coral)', color: '#fff', fontWeight: 700 }}>
+                  {language.toUpperCase()}
+                </span>
+              </div>
+            </button>
+
+            {/* Theme Switcher */}
             <button
               type="button"
               className="left-nav-popover-item"
@@ -320,7 +356,7 @@ export function LeftNavSidebar({
                   </svg>
                 )}
               </div>
-              <span>Mode {theme === 'dark' ? 'Terang' : 'Gelap'}</span>
+              <span>{theme === 'dark' ? t.nav.themeLight : t.nav.themeDark}</span>
             </button>
 
             {onEditProfile && (
@@ -338,7 +374,7 @@ export function LeftNavSidebar({
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
                 </div>
-                <span>Edit Profil</span>
+                <span>{t.nav.editProfile}</span>
               </button>
             )}
 
@@ -356,7 +392,7 @@ export function LeftNavSidebar({
                   <circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
-              <span>Halaman Profil</span>
+              <span>{t.nav.profilePage}</span>
             </button>
 
             <div className="left-nav-popover-divider" />
@@ -373,7 +409,7 @@ export function LeftNavSidebar({
                   <line x1="21" y1="12" x2="9" y2="12" />
                 </svg>
               </div>
-              <span>Keluar</span>
+              <span>{t.nav.logout}</span>
             </button>
           </div>
         )}
@@ -384,7 +420,7 @@ export function LeftNavSidebar({
           type="button"
           className={`left-nav-item ${isOthersMenuOpen ? 'active' : ''}`}
           onClick={() => setIsOthersMenuOpen(prev => !prev)}
-          title="Others"
+          title={t.nav.others}
           id="sidebar-others-btn"
           aria-expanded={isOthersMenuOpen}
         >
@@ -405,7 +441,7 @@ export function LeftNavSidebar({
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </div>
-          <span className="left-nav-label">Others</span>
+          <span className="left-nav-label">{t.nav.others}</span>
         </button>
       </div>
 

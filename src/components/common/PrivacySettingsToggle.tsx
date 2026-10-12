@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useTheme } from '@/context';
+import { useTheme, useLanguage } from '@/context';
 import { followService } from '@/services';
 
 export interface PrivacySettingsToggleProps {
@@ -18,6 +18,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
   style,
 }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
 
   const [isPrivate, setIsPrivate] = useState(initialIsPrivate);
@@ -119,7 +120,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                   margin: 0,
                 }}
               >
-                Akun Privat
+                {t.follow.privateAccount}
               </h4>
               <span
                 style={{
@@ -137,7 +138,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                   transition: 'all 0.2s ease',
                 }}
               >
-                {isPrivate ? 'Aktif' : 'Publik'}
+                {isPrivate ? t.follow.active : t.follow.public}
               </span>
             </div>
             <p
@@ -149,7 +150,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                 fontFamily: 'var(--font-sans)',
               }}
             >
-              Jika aktif, hanya orang yang Anda setujui yang dapat melihat artikel dan cerita Anda.
+              {t.follow.privateDesc}
             </p>
           </div>
         </div>
@@ -288,7 +289,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                 margin: '0 0 0.5rem',
               }}
             >
-              Beralih ke Akun Publik?
+              {t.follow.switchToPublicTitle}
             </h3>
             <p
               style={{
@@ -298,7 +299,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                 lineHeight: 1.5,
               }}
             >
-              Semua orang dapat melihat postingan Anda. Seluruh permintaan follow yang saat ini masih tertunda akan secara otomatis disetujui.
+              {t.follow.switchToPublicDesc}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <button
@@ -313,7 +314,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                   fontSize: '0.88rem',
                 }}
               >
-                Beralih ke Publik
+                {t.follow.switchToPublicConfirm}
               </button>
               <button
                 type="button"
@@ -327,7 +328,7 @@ export const PrivacySettingsToggle: React.FC<PrivacySettingsToggleProps> = ({
                   fontSize: '0.88rem',
                 }}
               >
-                Batal
+                {t.common.cancel}
               </button>
             </div>
           </div>

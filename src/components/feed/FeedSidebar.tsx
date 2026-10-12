@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useAuth } from '@/context';
+import { useAuth, useLanguage } from '@/context';
 import { uploadService } from '@/services';
 
 interface FeedSidebarProps {
@@ -30,6 +30,7 @@ export function FeedSidebar({
   onOpenFollowList,
 }: FeedSidebarProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const username = user?.username || 'Creator';
   const bio = user?.bio || 'Creator & Storyteller on SimpleBlog';
   const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
@@ -83,28 +84,28 @@ export function FeedSidebar({
             <div
               style={{ ...styles.statItem, cursor: handleProfileClick ? 'pointer' : 'default' }}
               onClick={handleProfileClick}
-              title="Lihat Postingan Anda"
+              title={t.profile.viewYourPosts}
             >
               <strong style={styles.statNumber}>{postsCount}</strong>
-              <span style={styles.statLabel}>Posts</span>
+              <span style={styles.statLabel}>{t.follow.posts}</span>
             </div>
             <div style={styles.statDivider}></div>
             <div
               style={{ ...styles.statItem, cursor: (onOpenFollowList || handleProfileClick) ? 'pointer' : 'default' }}
               onClick={() => onOpenFollowList ? onOpenFollowList('followers') : handleProfileClick?.()}
-              title="Lihat Daftar Pengikut"
+              title={t.profile.viewFollowers}
             >
               <strong style={styles.statNumber}>{followersCount}</strong>
-              <span style={styles.statLabel}>Followers</span>
+              <span style={styles.statLabel}>{t.follow.followers}</span>
             </div>
             <div style={styles.statDivider}></div>
             <div
               style={{ ...styles.statItem, cursor: (onOpenFollowList || handleProfileClick) ? 'pointer' : 'default' }}
               onClick={() => onOpenFollowList ? onOpenFollowList('following') : handleProfileClick?.()}
-              title="Lihat Akun yang Diikuti"
+              title={t.profile.viewFollowing}
             >
               <strong style={styles.statNumber}>{followingCount}</strong>
-              <span style={styles.statLabel}>Following</span>
+              <span style={styles.statLabel}>{t.follow.following}</span>
             </div>
           </div>
 
@@ -114,16 +115,16 @@ export function FeedSidebar({
               style={styles.actionBtn}
               onClick={onOpenCreateModal}
             >
-              + Write Post
+              + {t.post.writePost}
             </button>
             {handleProfileClick && (
               <button
                 className="btn btn-secondary"
                 style={styles.actionBtn}
                 onClick={handleProfileClick}
-                title="Lihat Detail Profil"
+                title={t.profile.viewProfile}
               >
-                Lihat Profil
+                {t.profile.viewProfile}
               </button>
             )}
           </div>
@@ -137,7 +138,7 @@ export function FeedSidebar({
             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
             <polyline points="17 6 23 6 23 12"></polyline>
           </svg>
-          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--heading-color)' }}>Trending Tags</h4>
+          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--heading-color)' }}>{t.feed.trendingTags}</h4>
         </div>
 
         <div style={styles.trendingList}>
@@ -161,7 +162,7 @@ export function FeedSidebar({
               );
             })
           ) : (
-            <p style={{ fontSize: '0.85rem', color: 'var(--fg-subtle)' }}>No trending tags yet</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--fg-subtle)' }}>{t.feed.noTrendingTags}</p>
           )}
         </div>
       </div>
@@ -169,18 +170,18 @@ export function FeedSidebar({
       {/* Community & Creation Tips */}
       <div style={styles.tipsCard} className="glass">
         <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--heading-color)' }}>
-          <span>💡</span> Creator Best Practices
+          <span>💡</span> {t.feed.creatorBestPractices}
         </h4>
         <ul style={styles.tipsList}>
-          <li>Give your story a clear and catchy title.</li>
-          <li>Tag relevant keywords to help people discover it.</li>
-          <li>Like and comment to foster inspiring conversations.</li>
+          <li>{t.feed.creatorTip1}</li>
+          <li>{t.feed.creatorTip2}</li>
+          <li>{t.feed.creatorTip3}</li>
         </ul>
       </div>
 
       {/* Subtle Footer */}
       <footer style={styles.sidebarFooter}>
-        <p>© 2026 SimpleBlog • Instagram-inspired Modular Community</p>
+        <p>{t.feed.footerTagline}</p>
       </footer>
     </aside>
   );

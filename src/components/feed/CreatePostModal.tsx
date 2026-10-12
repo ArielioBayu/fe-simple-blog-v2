@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth, useTheme } from '@/context';
+import { useAuth, useTheme, useLanguage } from '@/context';
 import { CreatePostRequest, UploadFileResponseData } from '@/types';
 import { uploadService } from '@/services';
 
@@ -21,6 +21,7 @@ interface AttachedMediaItem {
 export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalProps) {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
   const username = user?.username || 'Creator';
 
@@ -410,10 +411,10 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             </div>
             <div>
               <h3 id="create-modal-title" style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--heading-color)', fontFamily: 'var(--font-outfit)' }}>
-                Create New Post
+                {t.post.createPostTitle}
               </h3>
               <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
-                Publishing as @{username}
+                {t.post.publishingAs} @{username}
               </span>
             </div>
           </div>
@@ -422,8 +423,8 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             type="button"
             className="create-close-btn"
             onClick={handleClose}
-            aria-label="Tutup modal"
-            title="Tutup (Esc)"
+            aria-label={t.common.close}
+            title={`${t.common.close} (Esc)`}
             style={{
               width: '36px',
               height: '36px',
@@ -460,10 +461,10 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
         {/* Form */}
         <form onSubmit={handleSubmit} style={styles.modalForm}>
           <div style={styles.inputGroup}>
-            <label style={styles.inputLabel}>Post Title</label>
+            <label style={styles.inputLabel}>{t.post.postTitleLabel}</label>
             <input
               type="text"
-              placeholder="Give your thoughts a vibrant title..."
+              placeholder={t.post.postTitlePlaceholder}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -472,9 +473,9 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.inputLabel}>Content / Caption</label>
+            <label style={styles.inputLabel}>{t.post.contentLabel}</label>
             <textarea
-              placeholder="What's happening? Share your thoughts, story, or knowledge..."
+              placeholder={t.post.contentPlaceholder}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={4}
@@ -659,7 +660,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
           )}
 
           <div style={styles.inputGroup}>
-            <label style={styles.inputLabel}>Hashtags (Comma-separated)</label>
+            <label style={styles.inputLabel}>{t.post.hashtagsLabel}</label>
             <input
               type="text"
               placeholder="golang, nextjs, react, webdev"
@@ -690,7 +691,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
                 {uploadingImage ? (
                   <>
                     <span className="spinner" style={{ width: '12px', height: '12px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }}></span>
-                    {uploadProgressText || 'Mengunggah...'}
+                    {uploadProgressText || t.profile.uploading}
                   </>
                 ) : (
                   <>
@@ -735,14 +736,14 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
               onClick={handleClose}
               disabled={loading}
             >
-              Batal
+              {t.common.cancel}
             </button>
             <button
               type="submit"
               className="btn btn-primary create-btn-primary"
               disabled={loading || uploadingImage || !title.trim() || !content.trim()}
             >
-              {loading ? 'Mempublikasikan...' : 'Bagikan Cerita'}
+              {loading ? t.post.publishing : t.post.publishStory}
             </button>
           </div>
         </form>

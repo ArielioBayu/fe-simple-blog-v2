@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/context';
+import { useAuth, useLanguage } from '@/context';
 import { uploadService } from '@/services';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -22,6 +22,7 @@ export function Navbar({
   showBackToFeed = false,
 }: NavbarProps) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const username = user?.username || '';
   const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
   const [isScrolled, setIsScrolled] = useState(false);
@@ -61,7 +62,7 @@ export function Navbar({
         <div style={styles.navActions}>
           {showBackToFeed ? (
             <Link href="/" className="btn btn-secondary" style={{ padding: '0.5rem 1.15rem', fontSize: '0.88rem' }}>
-              &larr; Back to Feed
+              &larr; {t.nav.backToFeed}
             </Link>
           ) : (
             onCreatePost && (
@@ -74,7 +75,7 @@ export function Navbar({
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>Create Post</span>
+                <span>{t.nav.create}</span>
               </button>
             )
           )}  
@@ -87,7 +88,7 @@ export function Navbar({
                 cursor: onEditProfile ? 'pointer' : 'default',
               }}
               onClick={onEditProfile}
-              title={onEditProfile ? 'Click to edit profile' : undefined}
+              title={onEditProfile ? t.profile.clickToEditProfile : undefined}
             >
               <div className="story-avatar-wrap" style={{ width: '40px', height: '40px' }}>
                 <div className="story-avatar-inner">
@@ -106,7 +107,7 @@ export function Navbar({
                 </div>
               </div>
               <div style={styles.userMeta}>
-                <span style={styles.userGreeting}>Welcome,</span>
+                <span style={styles.userGreeting}>{t.nav.welcome}</span>
                 <span style={styles.userNameText}>@{username}</span>
               </div>
             </div>
@@ -120,8 +121,8 @@ export function Navbar({
             <button
               onClick={logout}
               className="btn-icon"
-              title="Logout"
-              aria-label="Logout"
+              title={t.nav.logout}
+              aria-label={t.nav.logout}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>

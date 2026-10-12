@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth, useTheme } from '@/context';
+import { useAuth, useTheme, useLanguage } from '@/context';
 import { followService, uploadService } from '@/services';
 import { FollowUserItem } from '@/types';
 
@@ -26,6 +26,7 @@ function FollowListModalContent({
 }: Omit<FollowListModalProps, 'isOpen'>) {
   const { user: currentUser } = useAuth();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
 
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
@@ -308,7 +309,7 @@ function FollowListModalContent({
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  {activeTab === 'followers' ? 'Pengikut' : 'Mengikuti'}
+                  {activeTab === 'followers' ? t.follow.followers : t.follow.following}
                 </h3>
                 <p
                   style={{
@@ -327,8 +328,8 @@ function FollowListModalContent({
                 type="button"
                 className="follow-close-btn"
                 onClick={handleClose}
-                aria-label="Tutup modal"
-                title="Tutup (Esc)"
+                aria-label={t.common.close}
+                title={`${t.common.close} (Esc)`}
                 style={{
                   width: '36px',
                   height: '36px',
@@ -404,7 +405,7 @@ function FollowListModalContent({
                   outline: 'none',
                 }}
               >
-                Pengikut
+                {t.follow.followers}
               </button>
               <button
                 type="button"
@@ -433,7 +434,7 @@ function FollowListModalContent({
                   outline: 'none',
                 }}
               >
-                Mengikuti
+                {t.follow.following}
               </button>
             </div>
 
@@ -463,7 +464,7 @@ function FollowListModalContent({
               <input
                 type="text"
                 value={searchInputVal}
-                placeholder={`Cari di ${activeTab === 'followers' ? 'pengikut' : 'mengikuti'}...`}
+                placeholder={activeTab === 'followers' ? t.follow.searchFollowersPlaceholder : t.follow.searchFollowingPlaceholder}
                 onChange={handleSearchChange}
                 style={{
                   width: '100%',
@@ -595,7 +596,7 @@ function FollowListModalContent({
                   onClick={() => loadData(activeTab, 1, searchQuery, false)}
                   style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}
                 >
-                  Coba Lagi
+                  {t.common.retry}
                 </button>
               </div>
             ) : items.length === 0 ? (
@@ -605,17 +606,17 @@ function FollowListModalContent({
                 </div>
                 <h4 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--heading-color)', margin: '0 0 0.25rem' }}>
                   {searchQuery
-                    ? 'Pengguna Tidak Ditemukan'
+                    ? t.follow.userNotFound
                     : activeTab === 'followers'
-                    ? 'Belum Ada Pengikut'
-                    : 'Belum Mengikuti Siapapun'}
+                    ? t.follow.noFollowersTitle
+                    : t.follow.noFollowingTitle}
                 </h4>
                 <p style={{ fontSize: '0.82rem', margin: 0, maxWidth: '280px', lineHeight: 1.4 }}>
                   {searchQuery
-                    ? `Tidak ada hasil yang cocok dengan "${searchQuery}"`
+                    ? `${t.follow.userNotFound} "${searchQuery}"`
                     : activeTab === 'followers'
-                    ? 'Pengguna yang mengikuti akun ini akan muncul di sini.'
-                    : 'Akun yang diikuti akan muncul di sini.'}
+                    ? t.follow.noFollowersDesc
+                    : t.follow.noFollowingDesc}
                 </p>
               </div>
             ) : (
@@ -717,7 +718,7 @@ function FollowListModalContent({
                                   flexShrink: 0,
                                 }}
                               >
-                                Follows you
+                                {t.follow.followsYou}
                               </span>
                             )}
                           </div>
@@ -766,7 +767,7 @@ function FollowListModalContent({
                                 outline: 'none',
                               }}
                             >
-                              {isActionLoading ? '...' : 'Hapus'}
+                              {isActionLoading ? '...' : t.follow.removeFollower}
                             </button>
                           ) : item.is_following ? (
                             <button
@@ -793,7 +794,7 @@ function FollowListModalContent({
                                 outline: 'none',
                               }}
                             >
-                              {isActionLoading ? '...' : 'Mengikuti'}
+                              {isActionLoading ? '...' : t.follow.followingBtn}
                             </button>
                           ) : item.is_followed_by ? (
                             <button
@@ -820,7 +821,7 @@ function FollowListModalContent({
                                 outline: 'none',
                               }}
                             >
-                              {isActionLoading ? '...' : 'Ikuti Balik'}
+                              {isActionLoading ? '...' : t.follow.followBack}
                             </button>
                           ) : (
                             <button
@@ -847,7 +848,7 @@ function FollowListModalContent({
                                 outline: 'none',
                               }}
                             >
-                              {isActionLoading ? '...' : 'Ikuti'}
+                              {isActionLoading ? '...' : t.follow.follow}
                             </button>
                           )}
                         </div>
@@ -876,7 +877,7 @@ function FollowListModalContent({
                         outline: 'none',
                       }}
                     >
-                      {loadingMore ? 'Memuat...' : 'Muat Lebih Banyak'}
+                      {loadingMore ? t.common.loading : t.feed.loadMore}
                     </button>
                   </div>
                 )}
