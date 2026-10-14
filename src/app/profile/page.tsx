@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useLanguage } from '@/context';
 import { authService, postService, uploadService, bookmarkService, followService } from '@/services';
-import { Post, UserProfile } from '@/types';
-import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, FollowRequestsModal } from '@/components';
+import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, FollowRequestsModal, BannerEditorModal } from '@/components';
+import { getBannerBackground } from '@/lib/bannerPresets';
+import type { UserProfile, Post } from '@/types';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user: authUser, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { user: authUser, isAuthenticated, isLoading: authLoading, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -19,6 +20,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'stories' | 'saved'>('stories');
   const [loading, setLoading] = useState(true);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isBannerEditorOpen, setIsBannerEditorOpen] = useState(false);
   const [followListModalTab, setFollowListModalTab] = useState<'followers' | 'following' | null>(null);
   const [isFollowRequestsOpen, setIsFollowRequestsOpen] = useState(false);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
@@ -155,7 +157,6 @@ export default function ProfilePage() {
   const username = currentUser?.username || 'Creator';
   const bio = currentUser?.bio || 'Kreator & Penulis Cerita di SimpleBlog';
   const avatarSrc = currentUser?.avatar_url && !avatarError ? uploadService.getImageUrl(currentUser.avatar_url) : null;
-  const bannerSrc = currentUser?.banner_url ? uploadService.getImageUrl(currentUser.banner_url) : null;
 
   // Format joined date
   const joinedDate = currentUser?.created_at
@@ -181,6 +182,29 @@ export default function ProfilePage() {
 
   return (
     <div style={styles.pageWrapper} className="animate-fade-in has-left-sidebar">
+      <style>{`
+        @media (max-width: 640px) {
+          .profile-header-layout {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 1.25rem !important;
+          }
+          .profile-info-col {
+            align-items: center !important;
+            width: 100% !important;
+          }
+          .profile-username-action-row {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 0.85rem !important;
+          }
+          .profile-top-actions {
+            justify-content: center !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
       <Toast message={toastMessage} />
 
       {/* Left Navigation Sidebar */}
@@ -211,152 +235,166 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        {/* Profile Card Container */}
+        {/* Profile Card Container - Modern Discord/Twitter Banner Layout */}
         <div style={styles.profileHeroCard} className="glass">
           {/* Top Banner Cover Photo */}
           <div
             style={{
               ...styles.coverBanner,
-              backgroundImage: bannerSrc ? `url(${bannerSrc})` : 'var(--ig-gradient)',
+              background: getBannerBackground(currentUser?.banner_url),
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
             }}
           >
             <div style={styles.bannerOverlay} />
+            {/* In-place Quick Action Button */}
+            <button
+              type="button"
+              style={styles.bannerEditBtn}
+              onClick={() => setIsBannerEditorOpen(true)}
+              title="Kustomisasi Sampul Profil (Discord Themes / Foto)"
+              aria-label="Ubah Sampul Profil"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span>Ubah Sampul</span>
+            </button>
           </div>
 
           {/* Profile Details Header */}
           <div style={styles.profileContentArea}>
-            {/* Avatar Row */}
-            <div style={styles.avatarRow}>
-              <div
-                className="story-avatar-wrap"
-                style={styles.largeAvatarWrap}
-              >
-                <div className="story-avatar-inner" style={{ backgroundColor: 'var(--bg-card)' }}>
-                  {avatarSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatarSrc}
-                      alt={username}
-                      onError={() => setAvatarError(true)}
-                      style={styles.avatarImg}
-                    />
-                  ) : (
-                    <span style={styles.avatarInitials}>
-                      {(username || 'U').substring(0, 2).toUpperCase()}
-                    </span>
-                  )}
+            <div className="profile-header-layout" style={styles.headerLayout}>
+              {/* Left Column: Avatar */}
+              <div style={styles.avatarCol}>
+                <div
+                  className="story-avatar-wrap"
+                  style={styles.largeAvatarWrap}
+                >
+                  <div className="story-avatar-inner" style={{ backgroundColor: 'var(--bg-card)' }}>
+                    {avatarSrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarSrc}
+                        alt={username}
+                        onError={() => setAvatarError(true)}
+                        style={styles.avatarImg}
+                      />
+                    ) : (
+                      <span style={styles.avatarInitials}>
+                        {(username || 'U').substring(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons Row */}
-              <div style={styles.topActionsRow}>
-                {currentUser?.is_private && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{
-                      ...styles.actionBtn,
-                      borderColor: pendingRequestsCount > 0 ? 'var(--brand-coral)' : undefined,
-                      color: pendingRequestsCount > 0 ? 'var(--brand-coral)' : undefined,
-                    }}
-                    onClick={() => setIsFollowRequestsOpen(true)}
-                    title="Permintaan Mengikuti"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="8.5" cy="7" r="4"></circle>
-                      <line x1="20" y1="8" x2="20" y2="14"></line>
-                      <line x1="23" y1="11" x2="17" y2="11"></line>
+              {/* Right Column: Profile Info & Actions */}
+              <div className="profile-info-col" style={styles.infoCol}>
+                {/* Username & Action Buttons Row */}
+                <div className="profile-username-action-row" style={styles.usernameActionRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h1 style={styles.profileUsername}>@{username}</h1>
+                    {currentUser?.is_private && (
+                      <span
+                        title="Akun Bersifat Privat"
+                        style={styles.privateBadge}
+                      >
+                        🔒 Privat
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Action Buttons Row */}
+                  <div className="profile-top-actions" style={styles.topActionsRow}>
+                    {currentUser?.is_private && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{
+                          ...styles.actionBtn,
+                          borderColor: pendingRequestsCount > 0 ? 'var(--brand-coral)' : undefined,
+                          color: pendingRequestsCount > 0 ? 'var(--brand-coral)' : undefined,
+                        }}
+                        onClick={() => setIsFollowRequestsOpen(true)}
+                        title="Permintaan Mengikuti"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="8.5" cy="7" r="4"></circle>
+                          <line x1="20" y1="8" x2="20" y2="14"></line>
+                          <line x1="23" y1="11" x2="17" y2="11"></line>
+                        </svg>
+                        <span>Permintaan {pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={styles.actionBtn}
+                      onClick={() => setIsEditProfileOpen(true)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      <span>Edit Profil</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={styles.actionBtn}
+                      onClick={handleShareProfile}
+                      title="Bagikan Tautan Profil"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                      </svg>
+                      <span>Bagikan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ ...styles.actionBtn, color: '#EF4444' }}
+                      onClick={logout}
+                      title="Keluar dari akun"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                      </svg>
+                      <span>Keluar</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Profile Bio & Metadata */}
+                <div style={styles.userInfoSection}>
+                  {currentUser?.email && (
+                    <p style={styles.userEmailText}>{currentUser.email}</p>
+                  )}
+
+                  <p style={styles.bioText}>{bio}</p>
+
+                  <div style={styles.joinDateRow}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    <span>Permintaan {pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={styles.actionBtn}
-                  onClick={() => setIsEditProfileOpen(true)}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                  <span>Edit Profil</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={styles.actionBtn}
-                  onClick={handleShareProfile}
-                  title="Bagikan Tautan Profil"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="18" cy="5" r="3"></circle>
-                    <circle cx="6" cy="12" r="3"></circle>
-                    <circle cx="18" cy="19" r="3"></circle>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                  </svg>
-                  <span>Bagikan</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ ...styles.actionBtn, color: '#EF4444' }}
-                  onClick={logout}
-                  title="Keluar dari akun"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                  </svg>
-                  <span>Keluar</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Profile Info Header */}
-            <div style={styles.userInfoSection}>
-              <div style={{ ...styles.usernameTitleRow, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={styles.profileUsername}>@{username}</h1>
-                {currentUser?.is_private && (
-                  <span
-                    title="Akun Bersifat Privat"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '3px 10px',
-                      borderRadius: '9999px',
-                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                      color: 'var(--brand-coral, #FF5A36)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                    }}
-                  >
-                    🔒 Privat
-                  </span>
-                )}
-              </div>
-
-              {currentUser?.email && (
-                <p style={styles.userEmailText}>{currentUser.email}</p>
-              )}
-
-              <p style={styles.bioText}>{bio}</p>
-
-              <div style={styles.joinDateRow}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                <span>Bergabung sejak {joinedDate}</span>
+                    <span>Bergabung sejak {joinedDate}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -617,6 +655,23 @@ export default function ProfilePage() {
         onClose={() => setIsFollowRequestsOpen(false)}
         onRequestHandled={handleProfileUpdated}
       />
+
+      {/* Banner Editor Modal */}
+      <BannerEditorModal
+        isOpen={isBannerEditorOpen}
+        currentBannerUrl={currentUser?.banner_url}
+        onClose={() => setIsBannerEditorOpen(false)}
+        onSave={async (newUrl) => {
+          await updateProfile({
+            username: currentUser?.username,
+            bio: currentUser?.bio,
+            avatar_url: currentUser?.avatar_url,
+            banner_url: newUrl,
+            is_private: currentUser?.is_private,
+          });
+          await handleProfileUpdated();
+        }}
+      />
     </div>
   );
 }
@@ -655,32 +710,81 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '2rem',
   },
   coverBanner: {
-    height: '190px',
+    height: '210px',
+    width: '100%',
+    position: 'relative',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    position: 'relative',
   },
   bannerOverlay: {
     position: 'absolute',
     inset: 0,
-    background: 'linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.45) 100%)',
+    background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.5) 100%)',
+  },
+  bannerEditBtn: {
+    position: 'absolute',
+    top: '16px',
+    right: '16px',
+    zIndex: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '0.45rem 0.95rem',
+    fontSize: '0.82rem',
+    fontWeight: 600,
+    borderRadius: '9999px',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    color: '#FFFFFF',
+    border: '1px solid rgba(255, 255, 255, 0.28)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    cursor: 'pointer',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+    transition: 'all 0.2s ease',
   },
   profileContentArea: {
-    padding: '0 2rem 2rem',
+    padding: '0 2.2rem 2.2rem',
     position: 'relative',
   },
-  avatarRow: {
+  headerLayout: {
     display: 'flex',
+    gap: '2.2rem',
+    alignItems: 'flex-start',
+    marginBottom: '1.75rem',
+  },
+  avatarCol: {
+    flexShrink: 0,
+    marginTop: '-58px',
+    zIndex: 5,
+  },
+  infoCol: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    paddingTop: '0.85rem',
+  },
+  usernameActionRow: {
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: '-55px',
-    marginBottom: '1.25rem',
     flexWrap: 'wrap',
     gap: '1rem',
   },
+  privateBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '3px 10px',
+    borderRadius: '9999px',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    color: 'var(--brand-coral, #FF5A36)',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+  },
   largeAvatarWrap: {
-    width: '110px',
-    height: '110px',
+    width: '120px',
+    height: '120px',
     padding: '3.5px',
     boxShadow: 'var(--shadow-lg)',
   },

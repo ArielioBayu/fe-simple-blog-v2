@@ -16,6 +16,7 @@ import {
   CommentDrawer,
   ErrorState,
 } from '@/components';
+import { getBannerBackground } from '@/lib/bannerPresets';
 
 export default function UserPublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -193,7 +194,6 @@ export default function UserPublicProfilePage({ params }: { params: Promise<{ id
   }
 
   const avatarSrc = !avatarError && profile.avatar_url ? uploadService.getImageUrl(profile.avatar_url) : null;
-  const bannerSrc = profile.banner_url ? uploadService.getImageUrl(profile.banner_url) : null;
   const username = profile.username || 'user';
   const bio = profile.bio?.trim() || t.profile.noBio;
   const joinedDate = profile.created_at
@@ -207,6 +207,29 @@ export default function UserPublicProfilePage({ params }: { params: Promise<{ id
 
   return (
     <div style={styles.pageWrapper} className="has-left-sidebar animate-fade-in">
+      <style>{`
+        @media (max-width: 640px) {
+          .profile-header-layout {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 1.25rem !important;
+          }
+          .profile-info-col {
+            align-items: center !important;
+            width: 100% !important;
+          }
+          .profile-username-action-row {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 0.85rem !important;
+          }
+          .profile-top-actions {
+            justify-content: center !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
       <Toast message={toastMessage} />
 
       <LeftNavSidebar
@@ -240,13 +263,15 @@ export default function UserPublicProfilePage({ params }: { params: Promise<{ id
           </Link>
         </div>
 
-        {/* Profile Card Container */}
+        {/* Profile Card Container - Modern Discord/Twitter Banner Layout */}
         <div style={styles.profileHeroCard} className="glass">
           {/* Top Banner Cover Photo */}
           <div
             style={{
               ...styles.coverBanner,
-              backgroundImage: bannerSrc ? `url(${bannerSrc})` : 'var(--ig-gradient)',
+              background: getBannerBackground(profile.banner_url),
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
             }}
           >
             <div style={styles.bannerOverlay} />
@@ -254,115 +279,113 @@ export default function UserPublicProfilePage({ params }: { params: Promise<{ id
 
           {/* Profile Details Header */}
           <div style={styles.profileContentArea}>
-            {/* Avatar Row & Actions */}
-            <div style={styles.avatarRow}>
-              <div className="story-avatar-wrap" style={styles.largeAvatarWrap}>
-                <div className="story-avatar-inner" style={{ position: 'relative' }}>
-                  {avatarSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatarSrc}
-                      alt={username}
-                      onError={() => setAvatarError(true)}
-                      style={styles.avatarImg}
-                    />
-                  ) : (
-                    <span style={styles.avatarInitials}>
-                      {(username || 'U').substring(0, 2).toUpperCase()}
-                    </span>
-                  )}
+            <div className="profile-header-layout" style={styles.headerLayout}>
+              {/* Left Column: Avatar */}
+              <div style={styles.avatarCol}>
+                <div className="story-avatar-wrap" style={styles.largeAvatarWrap}>
+                  <div className="story-avatar-inner" style={{ backgroundColor: 'var(--bg-card)' }}>
+                    {avatarSrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarSrc}
+                        alt={username}
+                        onError={() => setAvatarError(true)}
+                        style={styles.avatarImg}
+                      />
+                    ) : (
+                      <span style={styles.avatarInitials}>
+                        {(username || 'U').substring(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons Row (FollowButton & Share) */}
-              <div style={styles.topActionsRow}>
-                {relationship && (
-                  <FollowButton
-                    targetUserId={userId}
-                    targetUsername={username}
-                    initialRelationship={relationship}
-                    onRelationshipChange={(updated) => {
-                      setRelationship(updated);
-                      // Refresh profile stats dynamically
-                      authService.getUserProfileById(userId).then((fresh) => {
-                        if (fresh) setProfile(fresh);
-                      }).catch(() => {});
-                    }}
-                    style={{
-                      padding: '0.65rem 1.4rem',
-                      borderRadius: '12px',
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                    }}
-                  />
-                )}
+              {/* Right Column: Profile Info & Actions */}
+              <div className="profile-info-col" style={styles.infoCol}>
+                {/* Username & Action Buttons Row */}
+                <div className="profile-username-action-row" style={styles.usernameActionRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h1 style={styles.profileUsername}>@{username}</h1>
+                    {isPrivate && (
+                      <span
+                        title="Akun Bersifat Privat"
+                        style={styles.privateBadge}
+                      >
+                        🔒 Privat
+                      </span>
+                    )}
+                  </div>
 
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={styles.actionBtn}
-                  onClick={() => {
-                    const url = window.location.href;
-                    if (navigator.clipboard) {
-                      navigator.clipboard.writeText(url).then(() => {
-                        showToast('Tautan profil berhasil disalin ke clipboard!');
-                      }).catch(() => {});
-                    } else {
-                      showToast(`Profil @${username} siap dibagikan!`);
-                    }
-                  }}
-                  title="Bagikan Tautan Profil"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="18" cy="5" r="3"></circle>
-                    <circle cx="6" cy="12" r="3"></circle>
-                    <circle cx="18" cy="19" r="3"></circle>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                  </svg>
-                  <span>Bagikan</span>
-                </button>
-              </div>
-            </div>
+                  {/* Action Buttons Row (FollowButton & Share) */}
+                  <div className="profile-top-actions" style={styles.topActionsRow}>
+                    {relationship && (
+                      <FollowButton
+                        targetUserId={userId}
+                        targetUsername={username}
+                        initialRelationship={relationship}
+                        onRelationshipChange={(updated) => {
+                          setRelationship(updated);
+                          // Refresh profile stats dynamically
+                          authService.getUserProfileById(userId).then((fresh) => {
+                            if (fresh) setProfile(fresh);
+                          }).catch(() => {});
+                        }}
+                        style={{
+                          padding: '0.65rem 1.4rem',
+                          borderRadius: '12px',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                        }}
+                      />
+                    )}
 
-            {/* User Info Section */}
-            <div style={styles.userInfoSection}>
-              <div style={{ ...styles.usernameTitleRow, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={styles.profileUsername}>@{username}</h1>
-                {isPrivate && (
-                  <span
-                    title="Akun Bersifat Privat"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '3px 10px',
-                      borderRadius: '9999px',
-                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                      color: 'var(--brand-coral, #FF5A36)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                    }}
-                  >
-                    🔒 Privat
-                  </span>
-                )}
-              </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={styles.actionBtn}
+                      onClick={() => {
+                        const url = window.location.href;
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(url).then(() => {
+                            showToast('Tautan profil berhasil disalin ke clipboard!');
+                          }).catch(() => {});
+                        } else {
+                          showToast(`Profil @${username} siap dibagikan!`);
+                        }
+                      }}
+                      title="Bagikan Tautan Profil"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                      </svg>
+                      <span>Bagikan</span>
+                    </button>
+                  </div>
+                </div>
 
-              {profile.email && (
-                <p style={styles.userEmailText}>{profile.email}</p>
-              )}
+                {/* Profile Bio & Metadata */}
+                <div style={styles.userInfoSection}>
+                  {profile.email && (
+                    <p style={styles.userEmailText}>{profile.email}</p>
+                  )}
 
-              <p style={styles.bioText}>{bio}</p>
+                  <p style={styles.bioText}>{bio}</p>
 
-              <div style={styles.joinDateRow}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                <span>Bergabung sejak {joinedDate}</span>
+                  <div style={styles.joinDateRow}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Bergabung sejak {joinedDate}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -592,32 +615,60 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid var(--border)',
   },
   coverBanner: {
-    height: '190px',
+    height: '210px',
+    width: '100%',
+    position: 'relative',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    position: 'relative',
   },
   bannerOverlay: {
     position: 'absolute',
     inset: 0,
-    background: 'linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.45) 100%)',
+    background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.5) 100%)',
   },
   profileContentArea: {
-    padding: '0 2rem 2rem',
+    padding: '0 2.2rem 2.2rem',
     position: 'relative',
   },
-  avatarRow: {
+  headerLayout: {
     display: 'flex',
+    gap: '2.2rem',
+    alignItems: 'flex-start',
+    marginBottom: '1.75rem',
+  },
+  avatarCol: {
+    flexShrink: 0,
+    marginTop: '-58px',
+    zIndex: 5,
+  },
+  infoCol: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    paddingTop: '0.85rem',
+  },
+  usernameActionRow: {
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: '-55px',
-    marginBottom: '1.25rem',
     flexWrap: 'wrap',
     gap: '1rem',
   },
+  privateBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '3px 10px',
+    borderRadius: '9999px',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    color: 'var(--brand-coral, #FF5A36)',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+  },
   largeAvatarWrap: {
-    width: '110px',
-    height: '110px',
+    width: '120px',
+    height: '120px',
     padding: '3.5px',
     boxShadow: 'var(--shadow-lg)',
   },

@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth, useLanguage } from '@/context';
 import { uploadService } from '@/services';
+import { getBannerBackground } from '@/lib/bannerPresets';
 
 interface FeedSidebarProps {
   userStoriesCount: number;
@@ -34,7 +35,6 @@ export function FeedSidebar({
   const username = user?.username || 'Creator';
   const bio = user?.bio || 'Creator & Storyteller on SimpleBlog';
   const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
-  const bannerSrc = user?.banner_url ? uploadService.getImageUrl(user.banner_url) : null;
 
   // Real stats from backend (or fallback to calculated)
   const postsCount = user?.stats?.stories_count !== undefined ? user.stats.stories_count : userStoriesCount;
@@ -47,18 +47,26 @@ export function FeedSidebar({
     <aside style={styles.sidebarColumn}>
       {/* User Profile Card */}
       <div style={styles.profileCard} className="glass">
+        {/* Banner Strip */}
         <div
           style={{
-            ...styles.profileHeaderBg,
-            backgroundImage: bannerSrc ? `url(${bannerSrc})` : 'var(--ig-gradient)',
+            ...styles.profileBanner,
+            background: getBannerBackground(user?.banner_url),
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
-        ></div>
+        />
+
         <div style={styles.profileContent}>
           <div
             className="story-avatar-wrap"
-            style={{ width: '68px', height: '68px', marginTop: '-34px', cursor: handleProfileClick ? 'pointer' : 'default' }}
+            style={{
+              width: '72px',
+              height: '72px',
+              marginTop: '-38px',
+              cursor: handleProfileClick ? 'pointer' : 'default',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+            }}
             onClick={handleProfileClick}
             title={handleProfileClick ? 'Lihat Profil' : undefined}
           >
@@ -197,13 +205,14 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
   },
-  profileHeaderBg: {
+  profileBanner: {
     height: '75px',
-    background: 'var(--ig-gradient)',
-    opacity: 0.9,
+    width: '100%',
+    position: 'relative',
+    flexShrink: 0,
   },
   profileContent: {
-    padding: '0 1.5rem 1.5rem 1.5rem',
+    padding: '0 1.25rem 1.25rem',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

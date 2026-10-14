@@ -7,6 +7,9 @@ import { uploadService, followService } from '@/services';
 import { UserProfile } from '@/types';
 import { PrivacySettingsToggle } from './PrivacySettingsToggle';
 
+import { BannerEditorModal } from './BannerEditorModal';
+import { getBannerBackground } from '@/lib/bannerPresets';
+
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,6 +29,7 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
   const [bio, setBio] = useState(user?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [bannerUrl, setBannerUrl] = useState(user?.banner_url || '');
+  const [isBannerEditorOpen, setIsBannerEditorOpen] = useState(false);
   const [isPrivate, setIsPrivate] = useState<boolean>(Boolean(user?.is_private));
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -215,15 +219,66 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
             <span style={styles.charCount}>{bio.length}/250</span>
           </div>
 
-          {/* Banner URL (Optional) */}
+
+          {/* Banner Sampul Profil */}
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Banner Background Image (Optional URL)</label>
-            <input
-              type="text"
-              value={bannerUrl}
-              onChange={(e) => setBannerUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/... or relative path"
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={styles.label}>Sampul Profil (Banner)</label>
+              {bannerUrl && (
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '0.78rem', cursor: 'pointer', padding: 0 }}
+                  onClick={() => setBannerUrl('')}
+                >
+                  Reset Default
+                </button>
+              )}
+            </div>
+
+            <div
+              style={{
+                width: '100%',
+                height: '76px',
+                borderRadius: '12px',
+                background: getBannerBackground(bannerUrl),
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.35)',
+                  backdropFilter: 'blur(2px)',
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{
+                  position: 'relative',
+                  zIndex: 2,
+                  fontSize: '0.8rem',
+                  padding: '0.45rem 0.95rem',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(6px)',
+                }}
+                onClick={() => setIsBannerEditorOpen(true)}
+              >
+                🎨 Kustomisasi Sampul (Discord Themes / Foto)
+              </button>
+            </div>
           </div>
 
           {/* Account Privacy Toggle with Warning Modal */}
@@ -252,6 +307,16 @@ function EditProfileModalContent({ user, onClose, onSuccess }: InnerContentProps
             </button>
           </div>
         </form>
+
+        {/* Banner Editor Modal */}
+        <BannerEditorModal
+          isOpen={isBannerEditorOpen}
+          currentBannerUrl={bannerUrl}
+          onClose={() => setIsBannerEditorOpen(false)}
+          onSave={async (newUrl) => {
+            setBannerUrl(newUrl);
+          }}
+        />
       </div>
     </div>
   );

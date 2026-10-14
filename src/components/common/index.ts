@@ -25,3 +25,4 @@ export * from './Button';
 export * from './FormField';
 export * from './EmptyState';
 export * from './ErrorState';
+export * from './BannerEditorModal';

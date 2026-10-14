@@ -11,6 +11,8 @@ import { FollowListModal } from './FollowListModal';
 import { FollowButton } from './FollowButton';
 import { PrivateAccountLocked } from './PrivateAccountLocked';
 
+import { getBannerBackground } from '@/lib/bannerPresets';
+
 interface UserProfileModalProps {
   isOpen: boolean;
   userId: number | null;
@@ -275,7 +277,6 @@ function UserProfileModalContent({
   const rawAvatar = profile?.avatar_url || (profile as unknown as { avatar?: string })?.avatar || null;
   const rawBanner = profile?.banner_url || (profile as unknown as { banner?: string })?.banner || null;
   const avatarUrl = rawAvatar && !avatarError ? uploadService.getImageUrl(rawAvatar) : null;
-  const bannerUrl = rawBanner ? uploadService.getImageUrl(rawBanner) : null;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -474,13 +475,11 @@ function UserProfileModalContent({
             </svg>
           </button>
 
-          {/* Banner Cover with Vibrant Harmonious Gradient */}
+          {/* Modal Top Banner Cover Strip */}
           <div
             style={{
               ...styles.banner,
-              backgroundImage: bannerUrl
-                ? `url(${bannerUrl})`
-                : 'linear-gradient(135deg, #FF5A36 0%, #E11D48 35%, #9333EA 75%, #4F46E5 100%)',
+              background: getBannerBackground(rawBanner),
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -999,9 +998,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 0,
   },
   banner: {
-    height: '130px',
+    height: '115px',
     width: '100%',
     position: 'relative',
+    flexShrink: 0,
   },
   selfBadge: {
     position: 'absolute',
@@ -1010,12 +1010,13 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
-    color: '#fff',
+    color: '#ffffff',
     fontSize: '0.75rem',
     fontWeight: 700,
     padding: '4px 12px',
     borderRadius: '9999px',
     border: '1px solid rgba(255, 255, 255, 0.25)',
+    zIndex: 10,
   },
   content: {
     padding: '0 1.5rem 1.75rem',
@@ -1025,8 +1026,8 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
   },
   avatarRow: {
-    marginTop: '-44px',
-    marginBottom: '0.75rem',
+    marginTop: '-42px',
+    marginBottom: '0.85rem',
     zIndex: 2,
   },
   avatarLetter: {
