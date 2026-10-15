@@ -6,3 +6,4 @@ export * from './upload.service';
 export * from './bookmark.service';
 export * from './follow.service';
 export * from './user.service';
+export * from './notification.service';

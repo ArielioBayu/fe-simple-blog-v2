@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useLanguage } from '@/context';
 import { authService, postService, uploadService, bookmarkService, followService } from '@/services';
-import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, FollowRequestsModal, BannerEditorModal } from '@/components';
+import { Navbar, Toast, EditProfileModal, LeftNavSidebar, FollowListModal, FollowRequestsModal, BannerEditorModal, CommentDrawer } from '@/components';
 import { getBannerBackground } from '@/lib/bannerPresets';
 import type { UserProfile, Post } from '@/types';
 
@@ -26,6 +26,10 @@ export default function ProfilePage() {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
+
+  // CommentDrawer state for viewing stories seamlessly
+  const [commentDrawerPost, setCommentDrawerPost] = useState<Post | null>(null);
+  const [isCommentDrawerOpen, setIsCommentDrawerOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -515,11 +519,23 @@ export default function ProfilePage() {
                   const isMultiMedia = Boolean(post.media && post.media.length > 1);
 
                   return (
-                    <Link
+                    <div
                       key={post.id}
-                      href={`/posts/${post.id}`}
                       style={styles.storyCardLink}
                       className="glass glass-interactive"
+                      onClick={() => {
+                        setCommentDrawerPost(post);
+                        setIsCommentDrawerOpen(true);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setCommentDrawerPost(post);
+                          setIsCommentDrawerOpen(true);
+                        }
+                      }}
                     >
                       <div style={styles.storyMediaWrapper}>
                         {coverUrl ? (
@@ -558,7 +574,7 @@ export default function ProfilePage() {
                           {post.created_at ? new Date(post.created_at.replace(' ', 'T')).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : ''}
                         </span>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -586,11 +602,23 @@ export default function ProfilePage() {
                   const isMultiMedia = Boolean(post.media && post.media.length > 1);
 
                   return (
-                    <Link
+                    <div
                       key={post.id}
-                      href={`/posts/${post.id}`}
                       style={styles.storyCardLink}
                       className="glass glass-interactive"
+                      onClick={() => {
+                        setCommentDrawerPost(post);
+                        setIsCommentDrawerOpen(true);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setCommentDrawerPost(post);
+                          setIsCommentDrawerOpen(true);
+                        }
+                      }}
                     >
                       <div style={styles.storyMediaWrapper}>
                         {coverUrl ? (
@@ -620,7 +648,7 @@ export default function ProfilePage() {
                         <h4 style={styles.storyCardTitle}>{post.post_title}</h4>
                         <span style={styles.storyCardDate}>Oleh @{post.username}</span>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -670,6 +698,28 @@ export default function ProfilePage() {
             is_private: currentUser?.is_private,
           });
           await handleProfileUpdated();
+        }}
+      />
+
+      {/* Comment Drawer Modal — Split view with comments on the side */}
+      <CommentDrawer
+        post={commentDrawerPost}
+        isOpen={isCommentDrawerOpen}
+        onClose={() => setIsCommentDrawerOpen(false)}
+        onToast={showToast}
+        savedPostIds={savedPosts.map((p) => p.id)}
+        onLikeToggled={(pId, newIsLiked) => {
+          setUserPosts((prev) =>
+            prev.map((p) => (p.id === pId ? { ...p, is_liked: newIsLiked } : p)),
+          );
+          setSavedPosts((prev) =>
+            prev.map((p) => (p.id === pId ? { ...p, is_liked: newIsLiked } : p)),
+          );
+        }}
+        onBookmarkToggled={(pId, newIsSaved) => {
+          if (!newIsSaved) {
+            setSavedPosts((prev) => prev.filter((p) => p.id !== pId));
+          }
         }}
       />
     </div>

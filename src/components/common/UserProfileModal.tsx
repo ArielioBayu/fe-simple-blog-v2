@@ -728,7 +728,7 @@ function UserProfileModalContent({
                                 if (onPostClick) {
                                   onPostClick(postItem);
                                 } else {
-                                  router.push(`/posts/${postItem.id}`);
+                                  router.push(`/?postId=${postItem.id}`);
                                 }
                               }}
                               role="button"
@@ -740,7 +740,7 @@ function UserProfileModalContent({
                                   if (onPostClick) {
                                     onPostClick(postItem);
                                   } else {
-                                    router.push(`/posts/${postItem.id}`);
+                                    router.push(`/?postId=${postItem.id}`);
                                   }
                                 }
                               }}

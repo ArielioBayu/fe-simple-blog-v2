@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth, useTheme, useLanguage } from '@/context';
+import { useAuth, useTheme, useLanguage, useNotification } from '@/context';
 import { uploadService, followService } from '@/services';
 import { FollowRequestsModal } from './FollowRequestsModal';
 import { SearchUserModal } from './SearchUserModal';
@@ -26,6 +26,7 @@ export function LeftNavSidebar({
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
+  const { unreadCount, openNotificationDrawer } = useNotification();
 
   const [isOthersMenuOpen, setIsOthersMenuOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -109,7 +110,7 @@ export function LeftNavSidebar({
   };
 
   const handleNotificationClick = () => {
-    setIsRequestsModalOpen(true);
+    openNotificationDrawer();
   };
 
   const handleProfileClick = () => {
@@ -265,8 +266,8 @@ export function LeftNavSidebar({
             >
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
-            {requestCount > 0 && (
-              <span className="left-nav-badge">{requestCount}</span>
+            {unreadCount > 0 && (
+              <span className="left-nav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
             )}
           </div>
           <span className="left-nav-label">{t.nav.notifications}</span>

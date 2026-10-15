@@ -196,6 +196,27 @@ export const id = {
     searching: 'Mencari...',
     viewProfile: 'Lihat Profil',
   },
+  notifications: {
+    title: 'Notifikasi',
+    subtitle: 'Pemberitahuan interaksi dan aktivitas terbaru',
+    markAllAsRead: 'Tandai semua dibaca',
+    allTab: 'Semua',
+    unreadTab: 'Belum Dibaca',
+    emptyTitle: 'Belum Ada Notifikasi',
+    emptyDesc: 'Aktivitas seperti suka, komentar, balasan, dan pengikut baru akan muncul di sini.',
+    loading: 'Memuat notifikasi...',
+    accept: 'Terima',
+    reject: 'Tolak',
+    accepted: 'Diterima',
+    rejected: 'Ditolak',
+    viewPost: 'Lihat Postingan',
+    viewProfile: 'Lihat Profil',
+    close: 'Tutup',
+    justNow: 'Baru saja',
+    minuteAgo: 'menit lalu',
+    hourAgo: 'jam lalu',
+    dayAgo: 'hari lalu',
+  },
 };
 
 export type LocaleTranslations = typeof id;

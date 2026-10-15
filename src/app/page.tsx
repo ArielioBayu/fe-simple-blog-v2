@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useLanguage } from '@/context';
 import { postService, activityService, bookmarkService, followService } from '@/services';
 import {
@@ -25,10 +25,18 @@ import {
 } from '@/components';
 import { Post, CreatePostRequest } from '@/types';
 
-export default function FeedPage() {
+function FeedPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { t } = useLanguage();
+
+  // Query parameters for notification & post deep-linking
+  const postIdParam = searchParams.get('postId');
+  const openCommentsParam = searchParams.get('openComments');
+  const actorParam = searchParams.get('actor') || undefined;
+  const previewParam = searchParams.get('preview') || undefined;
+  const commentIdParam = searchParams.get('commentId') || undefined;
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [feedMode, setFeedMode] = useState<'explore' | 'following'>('explore');
@@ -60,6 +68,39 @@ export default function FeedPage() {
   const [commentDrawerPost, setCommentDrawerPost] = useState<Post | null>(null);
   const [isCommentDrawerOpen, setIsCommentDrawerOpen] = useState(false);
 
+  // Auto-open CommentDrawer when ?postId=... is present in URL
+  useEffect(() => {
+    if (!postIdParam) return;
+    const pId = Number(postIdParam);
+    if (!pId) return;
+
+    // Check if post already exists in current loaded feed
+    const existing = posts.find((p) => p.id === pId);
+    if (existing) {
+      setCommentDrawerPost(existing);
+      setIsCommentDrawerOpen(true);
+      return;
+    }
+
+    // Otherwise, fetch target post directly from API
+    let ignore = false;
+    postService
+      .getPostById(pId)
+      .then((res) => {
+        if (!ignore && res.data?.detail_post) {
+          setCommentDrawerPost(res.data.detail_post as unknown as Post);
+          setIsCommentDrawerOpen(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load post for comment drawer:', err);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [postIdParam, posts]);
+
   const handleOpenCommentDrawer = (post: Post) => {
     setCommentDrawerPost(post);
     setIsCommentDrawerOpen(true);
@@ -67,6 +108,9 @@ export default function FeedPage() {
 
   const handleCloseCommentDrawer = () => {
     setIsCommentDrawerOpen(false);
+    if (postIdParam) {
+      router.replace('/', { scroll: false });
+    }
   };
 
   // Real-time comment counts map (synced instantly with CommentDrawer)
@@ -353,7 +397,7 @@ export default function FeedPage() {
   };
 
   const handleShare = async (postId: number, postTitle: string) => {
-    const url = `${window.location.origin}/posts/${postId}`;
+    const url = `${window.location.origin}/?postId=${postId}`;
     if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(url);
@@ -708,8 +752,19 @@ export default function FeedPage() {
             newIsSaved ? [...prev.filter(id => id !== postId), postId] : prev.filter(id => id !== postId),
           );
         }}
+        highlightActor={actorParam}
+        highlightPreview={previewParam}
+        highlightCommentId={commentIdParam}
       />
     </div>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <React.Suspense fallback={<FeedSkeletonList count={3} />}>
+      <FeedPageContent />
+    </React.Suspense>
   );
 }
 

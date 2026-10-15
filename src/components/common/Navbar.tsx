@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth, useLanguage } from '@/context';
+import { useAuth, useLanguage, useNotification } from '@/context';
 import { uploadService } from '@/services';
 import { SearchUserItem } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
@@ -28,6 +28,7 @@ export function Navbar({
 }: NavbarProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const { unreadCount, openNotificationDrawer } = useNotification();
   const [selectedSearchUser, setSelectedSearchUser] = useState<SearchUserItem | null>(null);
   const username = user?.username || '';
   const avatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
@@ -132,6 +133,47 @@ export function Navbar({
                 <span style={styles.userNameText}>@{username}</span>
               </div>
             </div>
+          )}
+
+          {/* In-App Notifications Bell */}
+          {username && (
+            <button
+              type="button"
+              onClick={openNotificationDrawer}
+              className="btn-icon"
+              title={t.notifications.title}
+              aria-label={t.notifications.title}
+              style={{ position: 'relative' }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-3px',
+                    right: '-3px',
+                    background: 'var(--ig-primary, #E1306C)',
+                    color: '#FFFFFF',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    minWidth: '16px',
+                    height: '16px',
+                    borderRadius: '9999px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 3px',
+                    border: '2px solid var(--nav-bg, #0F172A)',
+                    boxShadow: '0 2px 6px rgba(225, 48, 108, 0.45)',
+                  }}
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
           )}
 
           {/* Theme Toggle Button */}
