@@ -1653,6 +1653,141 @@ select:focus-visible {
   transition: background-color 0.4s ease, box-shadow 0.4s ease !important;
 }
 
+/* ── Auth Callback Animations & Styles ──────────────── */
+@keyframes callbackSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes callbackCardPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes callbackCheckPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.callback-page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: var(--bg-main, #F8FAFC);
+  color: var(--fg-main, #0F172A);
+  position: relative;
+  overflow: hidden;
+}
+
+.callback-backdrop-dimmer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.22) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+[data-theme="dark"] .callback-backdrop-dimmer {
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+.callback-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 2.75rem 2.25rem 2.25rem;
+  border-radius: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background-color: #FFFFFF;
+  box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.18),
+              0 10px 25px -5px rgba(15, 23, 42, 0.08),
+              0 0 0 1px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 20;
+  animation: callbackCardPop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .callback-card {
+  background-color: #151824;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.8),
+              0 12px 30px -5px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(255, 255, 255, 0.08),
+              0 0 45px -10px rgba(236, 72, 153, 0.25);
+}
+
+.callback-spinner-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--brand-pink, #EC4899);
+  border-right-color: #6366F1;
+  border-bottom-color: var(--brand-coral, #FF5A36);
+  animation: callbackSpin 0.9s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+}
+
+.callback-check-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background-color: #ECFDF5;
+  border: 2px solid #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.35);
+  animation: callbackCheckPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+[data-theme="dark"] .callback-check-circle {
+  background-color: rgba(16, 185, 129, 0.18);
+  border: 2px solid #34D399;
+  box-shadow: 0 8px 28px -4px rgba(16, 185, 129, 0.4);
+}
+
+@keyframes callbackProgressBar {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.callback-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366F1 0%, #EC4899 50%, #FF5A36 100%);
+  border-radius: 999px;
+  animation: callbackProgressBar 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+
 
 
 

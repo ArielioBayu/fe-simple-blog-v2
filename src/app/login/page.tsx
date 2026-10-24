@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useTheme } from '@/context';
+import { authService } from '@/services';
 import { SessionExpiredModal, OtpVerificationModal, AmbientAuroraBackground } from '@/components/common';
 
 /**
@@ -14,9 +15,11 @@ import { SessionExpiredModal, OtpVerificationModal, AmbientAuroraBackground } fr
 function LoginQueryDetector({
   onSessionExpired,
   onVerifiedNotice,
+  onErrorNotice,
 }: {
   onSessionExpired: () => void;
   onVerifiedNotice: () => void;
+  onErrorNotice: (msg: string) => void;
 }) {
   const searchParams = useSearchParams();
   useEffect(() => {
@@ -28,7 +31,18 @@ function LoginQueryDetector({
       const t = setTimeout(onVerifiedNotice, 250);
       return () => clearTimeout(t);
     }
-  }, [searchParams, onSessionExpired, onVerifiedNotice]);
+    const err = searchParams.get('error');
+    if (err) {
+      let msg = 'Login Google dibatalkan atau gagal diproses. Silakan coba kembali.';
+      if (err === 'access_denied') {
+        msg = 'Izin autentikasi Google dibatalkan.';
+      } else if (err === 'oauth_failed') {
+        msg = 'Verifikasi akun Google gagal. Silakan coba lagi atau gunakan login biasa.';
+      }
+      const t = setTimeout(() => onErrorNotice(msg), 250);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams, onSessionExpired, onVerifiedNotice, onErrorNotice]);
   return null;
 }
 
@@ -70,6 +84,10 @@ export default function LoginPage() {
     setTimeout(() => {
       setInfoNotice(null);
     }, 6000);
+  }, []);
+
+  const handleErrorDetected = React.useCallback((msg: string) => {
+    setError(msg);
   }, []);
 
   const handleSessionExpiredClose = () => {
@@ -155,10 +173,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    setInfoNotice('Fitur Login Google OAuth segera hadir. Silakan masuk menggunakan email atau nama pengguna Anda.');
-    setTimeout(() => {
-      setInfoNotice(null);
-    }, 4500);
+    window.location.href = authService.getGoogleLoginUrl();
   };
 
   const handleForgotPassword = (e: React.MouseEvent) => {
@@ -555,6 +570,7 @@ export default function LoginPage() {
       <LoginQueryDetector
         onSessionExpired={handleSessionExpiredDetected}
         onVerifiedNotice={handleVerifiedDetected}
+        onErrorNotice={handleErrorDetected}
       />
     </Suspense>
 

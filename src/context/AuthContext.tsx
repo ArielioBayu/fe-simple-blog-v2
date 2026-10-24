@@ -1,17 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services';
 import { UserProfile, LoginRequest, UpdateProfileRequest } from '@/types';
 
-import { getCookie } from '@/lib/api';
+import { getCookie, setCookie } from '@/lib/api';
 
 interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;  
+  login: (credentials: LoginRequest) => Promise<void>;
+  loginWithTokens: (accessToken: string, refreshToken?: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   updateProfile: (data: UpdateProfileRequest) => Promise<UserProfile>;
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
       const profile = await authService.getUserProfile();
       if (profile) {
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setUser(null);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -105,6 +106,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithTokens = useCallback(async (accessToken: string, refreshToken?: string) => {
+    setIsLoading(true);
+    try {
+      if (accessToken) {
+        setCookie('access_token', accessToken, 86400); // 24 hours
+      }
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+      await refreshProfile();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshProfile]);
+
   const updateProfile = async (data: UpdateProfileRequest): Promise<UserProfile> => {
     const res = await authService.updateProfile(data);
     const updated = res.data;
@@ -134,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithTokens,
         logout,
         refreshProfile,
         updateProfile,

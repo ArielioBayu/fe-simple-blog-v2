@@ -1,4 +1,4 @@
-import { apiFetch, setCookie, deleteCookie, ApiError } from '@/lib/api';
+import { apiFetch, setCookie, deleteCookie, ApiError, BASE_URL } from '@/lib/api';
 import {
   LoginRequest,
   LoginResponseData,
@@ -66,6 +66,13 @@ export const authService = {
       message: 'login success',
       data: tokens,
     };
+  },
+
+  /**
+   * Returns backend Google OAuth 2.0 initiation endpoint: GET /api/v1/auth/google/login
+   */
+  getGoogleLoginUrl(): string {
+    return `${BASE_URL}/auth/google/login`;
   },
 
   /**

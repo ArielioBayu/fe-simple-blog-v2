@@ -2,7 +2,7 @@ import { getFriendlyErrorMessage, isNetworkError, NETWORK_ERROR_MESSAGE } from '
 export { getFriendlyErrorMessage, HTTP_ERROR_MESSAGES, isNetworkError, NETWORK_ERROR_MESSAGE } from './errors';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (API_BASE_URL + '/api/v1');
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (API_BASE_URL + '/api/v1');
 
 export function getMediaUrl(filePath?: string | null): string | null {
   if (!filePath || typeof filePath !== 'string') return null;

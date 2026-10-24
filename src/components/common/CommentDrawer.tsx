@@ -400,6 +400,7 @@ export function CommentDrawer({
   }, [post, imageMatch]);
 
   const authorAvatarSrc = post?.avatar_url ? uploadService.getImageUrl(post.avatar_url) : null;
+  const currentUserAvatarSrc = user?.avatar_url ? uploadService.getImageUrl(user.avatar_url) : null;
   const isReply = Boolean(replyTarget);
 
   // Ambient backdrop src
@@ -448,36 +449,6 @@ export function CommentDrawer({
           to { opacity: 0; }
         }
 
-        /* ── Outer Dismiss Button ─────────────────────────────────────── */
-        .igm-outer-close {
-          position: absolute;
-          top: 1.25rem;
-          right: 1.25rem;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          cursor: pointer;
-          color: #FFFFFF;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          transition: background 0.18s, transform 0.18s, color 0.18s;
-          z-index: 1210;
-        }
-
-        .igm-outer-close:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: scale(1.06);
-        }
-
-        .igm-outer-close:active {
-          transform: scale(0.94);
-        }
-
         /* ── Modal Container ─────────────────────────────────────────── */
         .igm-modal {
           display: flex;
@@ -485,9 +456,9 @@ export function CommentDrawer({
           height: min(90vh, 840px);
           border-radius: 20px;
           overflow: hidden;
-          background: var(--modal-bg, #0F172A);
-          border: 1px solid var(--border);
-          box-shadow: 0 28px 84px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
+          background: #06080E;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 32px 88px -12px rgba(0, 0, 0, 0.75);
           position: relative;
           z-index: 1205;
           animation: igmModalEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -530,6 +501,8 @@ export function CommentDrawer({
           display: flex;
           align-items: center;
           justify-content: center;
+          border-top-left-radius: 20px;
+          border-bottom-left-radius: 20px;
         }
 
         .igm-ambient-backdrop {
@@ -722,24 +695,36 @@ export function CommentDrawer({
         }
 
         .igm-header-close-btn {
-          background: none;
-          border: none;
+          background: var(--btn-secondary-bg);
+          border: 1px solid var(--border);
           cursor: pointer;
           color: var(--fg-muted);
-          width: 32px;
-          height: 32px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          transition: background 0.15s, color 0.15s, transform 0.15s;
+          transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
           padding: 0;
+          flex-shrink: 0;
+          outline: none;
         }
 
         .igm-header-close-btn:hover {
-          background: var(--btn-secondary-hover);
-          color: var(--heading-color);
-          transform: scale(1.05);
+          background: rgba(236, 72, 153, 0.12);
+          border-color: rgba(236, 72, 153, 0.35);
+          color: var(--brand-coral);
+          transform: rotate(90deg) scale(1.12);
+          box-shadow: 0 4px 14px rgba(225, 48, 108, 0.22);
+        }
+
+        .igm-header-close-btn:active {
+          transform: rotate(90deg) scale(0.92);
+        }
+
+        .igm-header-close-btn:focus-visible {
+          box-shadow: 0 0 0 2px var(--brand-coral);
         }
 
         /* ── Scrollable Conversation Stream ──────────────────────────── */
@@ -915,27 +900,61 @@ export function CommentDrawer({
           cursor: default;
         }
 
-        /* ── Interaction Toolbar ─────────────────────────────────────── */
-        .igm-actions {
+        /* ── Pinterest-Style Conversation Footer ─────────────────────── */
+        .igm-pinterest-footer {
           flex-shrink: 0;
           border-top: 1px solid var(--border);
-          padding: 0.75rem 1.25rem 0.5rem;
+          padding: 0.95rem 1.25rem 1.15rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.85rem;
           background: var(--modal-bg, #0F172A);
         }
 
-        .igm-action-row {
+        /* Top Row: "Apa pendapatmu?" + Actions (Heart, Bookmark, Share) */
+        .igm-pinterest-top {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 0.75rem;
         }
 
-        .igm-action-left {
+        .igm-pinterest-heading-col {
+          display: flex;
+          flex-direction: column;
+          gap: 0.15rem;
+          min-width: 0;
+        }
+
+        .igm-pinterest-heading {
+          font-family: var(--font-outfit);
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: var(--heading-color);
+          margin: 0;
+          line-height: 1.25;
+          letter-spacing: -0.01em;
+        }
+
+        .igm-pinterest-meta {
+          font-size: 0.76rem;
+          color: var(--fg-subtle);
+          line-height: 1.3;
+          font-weight: 500;
           display: flex;
           align-items: center;
-          gap: 0.4rem;
+          gap: 0.35rem;
         }
 
-        .igm-icon-btn {
+        .igm-pinterest-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          flex-shrink: 0;
+        }
+
+        /* Heart / Like & Action Buttons */
+        .igm-action-btn {
           background: none;
           border: none;
           cursor: pointer;
@@ -950,52 +969,163 @@ export function CommentDrawer({
           outline: none;
         }
 
-        .igm-icon-btn:hover {
+        .igm-action-btn:hover {
           background: var(--btn-secondary-hover);
           color: var(--heading-color);
         }
 
-        .igm-icon-btn:active {
+        .igm-action-btn:active {
           transform: scale(0.9);
         }
 
-        .igm-icon-btn:focus-visible {
+        .igm-action-btn:focus-visible {
           box-shadow: 0 0 0 2px var(--social-blue);
         }
 
-        .igm-metrics-row {
-          margin-top: 0.4rem;
+        /* Bottom Row: User Avatar + Seamless Pill Input */
+        .igm-pinterest-input-row {
           display: flex;
-          align-items: baseline;
-          justify-content: space-between;
+          align-items: center;
+          gap: 0.65rem;
+          width: 100%;
         }
 
-        .igm-like-count {
-          font-weight: 700;
-          font-size: 0.9rem;
-          color: var(--heading-color);
-          font-family: var(--font-outfit);
-        }
-
-        .igm-full-date {
-          font-size: 0.7rem;
-          color: var(--fg-subtle);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          font-weight: 600;
-        }
-
-        /* ── Floating Comment Input Bar ──────────────────────────────── */
-        .igm-input-bar {
+        .igm-user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          overflow: hidden;
           flex-shrink: 0;
-          border-top: 1px solid var(--border);
-          padding: 0.75rem 1.25rem 0.95rem;
+          background: linear-gradient(135deg, var(--brand-coral), var(--brand-pink));
           display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          background: var(--modal-bg, #0F172A);
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+          border: 1.5px solid rgba(255, 255, 255, 0.2);
         }
 
+        .igm-user-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .igm-user-avatar-letter {
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: #FFFFFF;
+          font-family: var(--font-outfit);
+          line-height: 1;
+        }
+
+        /* Pill Input Box */
+        .igm-pill-container {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          background: var(--bg-input, rgba(15, 23, 42, 0.04));
+          border: 1px solid var(--border);
+          border-radius: 9999px;
+          padding: 0.32rem 0.45rem 0.32rem 1.05rem;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .igm-pill-container:focus-within {
+          border-color: var(--social-blue, #0095F6);
+          background: var(--modal-bg, #0F172A);
+          box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.16);
+        }
+
+        .igm-pill-input {
+          flex: 1;
+          min-width: 0;
+          background: transparent !important;
+          border: none !important;
+          outline: none !important;
+          box-shadow: none !important;
+          font-size: 0.88rem;
+          font-family: var(--font-sans);
+          color: var(--fg-main);
+          padding: 0.45rem 0;
+          caret-color: var(--brand-coral);
+        }
+
+        .igm-pill-input::placeholder {
+          color: var(--fg-subtle);
+          font-size: 0.86rem;
+        }
+
+        .igm-pill-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          flex-shrink: 0;
+        }
+
+        .igm-emoji-toggle {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 1.25rem;
+          line-height: 1;
+          padding: 0.25rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--fg-muted);
+          border-radius: 50%;
+          transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+        }
+
+        .igm-emoji-toggle:hover {
+          transform: scale(1.2);
+          background: rgba(0, 0, 0, 0.05);
+        }
+
+        .igm-send-btn {
+          border: none;
+          cursor: pointer;
+          width: 0;
+          height: 34px;
+          opacity: 0;
+          overflow: hidden;
+          padding: 0;
+          margin: 0;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          pointer-events: none;
+          transform: scale(0.6);
+          transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+          outline: none;
+        }
+
+        .igm-send-btn.active {
+          width: 34px;
+          opacity: 1;
+          pointer-events: auto;
+          transform: scale(1);
+          background: linear-gradient(135deg, var(--brand-coral), var(--brand-pink));
+          color: #FFFFFF;
+          box-shadow: 0 3px 12px rgba(225, 48, 108, 0.38);
+          margin-left: 2px;
+        }
+
+        .igm-send-btn.active:hover {
+          transform: scale(1.08) rotate(-6deg);
+          box-shadow: 0 5px 16px rgba(225, 48, 108, 0.5);
+        }
+
+        .igm-send-btn.active:active {
+          transform: scale(0.92);
+        }
+
+        /* Reply Banner */
         .igm-reply-banner {
           display: flex;
           align-items: center;
@@ -1036,7 +1166,7 @@ export function CommentDrawer({
           background: rgba(255, 255, 255, 0.1);
         }
 
-        /* Quick Emoji Strip */
+        /* Quick Emojis Drawer */
         .igm-quick-emojis {
           display: flex;
           align-items: center;
@@ -1070,93 +1200,6 @@ export function CommentDrawer({
           transform: scale(0.95);
         }
 
-        /* Input Container */
-        .igm-input-container {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: var(--bg-input, rgba(255, 255, 255, 0.06));
-          border: 1px solid var(--border);
-          border-radius: 9999px;
-          padding: 0.3rem 0.5rem 0.3rem 0.95rem;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-        }
-
-        .igm-input-container:focus-within {
-          border-color: var(--social-blue, #0095F6);
-          background: var(--modal-bg, #0F172A);
-          box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.18);
-        }
-
-        .igm-text-input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          font-size: 0.9rem;
-          font-family: var(--font-sans);
-          color: var(--fg-main);
-          padding: 0.4rem 0;
-          caret-color: var(--ig-primary);
-        }
-
-        .igm-text-input::placeholder {
-          color: var(--fg-subtle);
-          font-size: 0.88rem;
-        }
-
-        .igm-emoji-toggle {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 1.25rem;
-          line-height: 1;
-          padding: 0.2rem;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--fg-muted);
-          transition: transform 0.15s, color 0.15s;
-        }
-
-        .igm-emoji-toggle:hover {
-          transform: scale(1.15);
-          color: var(--heading-color);
-        }
-
-        .igm-send-btn {
-          background: linear-gradient(135deg, var(--brand-coral), var(--brand-pink));
-          border: none;
-          cursor: pointer;
-          color: #FFFFFF;
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          box-shadow: 0 2px 8px rgba(225, 48, 108, 0.3);
-          transition: opacity 0.18s, transform 0.15s, box-shadow 0.18s;
-        }
-
-        .igm-send-btn:not(:disabled):hover {
-          transform: scale(1.06);
-          box-shadow: 0 4px 12px rgba(225, 48, 108, 0.45);
-        }
-
-        .igm-send-btn:not(:disabled):active {
-          transform: scale(0.92);
-        }
-
-        .igm-send-btn:disabled {
-          opacity: 0.3;
-          background: var(--btn-secondary-bg);
-          color: var(--fg-subtle);
-          box-shadow: none;
-          cursor: default;
-        }
-
         /* ── Responsive Behavior ─────────────────────────────────────── */
         @media (max-width: 1024px) and (min-width: 768px) {
           .igm-modal {
@@ -1176,10 +1219,6 @@ export function CommentDrawer({
             align-items: flex-end;
           }
 
-          .igm-outer-close {
-            display: none;
-          }
-
           .igm-modal {
             flex-direction: column;
             width: 100vw;
@@ -1194,6 +1233,9 @@ export function CommentDrawer({
             flex: 0 0 38vh;
             max-height: 38vh;
             width: 100%;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            border-bottom-left-radius: 0;
           }
 
           .igm-right {
@@ -1203,9 +1245,10 @@ export function CommentDrawer({
             max-width: 100%;
             border-left: none;
             border-top: 1px solid var(--border);
+            border-radius: 0;
           }
 
-          .igm-input-bar {
+          .igm-pinterest-footer {
             padding-bottom: max(1rem, env(safe-area-inset-bottom));
           }
         }
@@ -1228,23 +1271,6 @@ export function CommentDrawer({
         onClick={onClose}
         aria-hidden="true"
       >
-        {/* Outer Close Button */}
-        <button
-          type="button"
-          className="igm-outer-close"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          aria-label="Tutup dialog"
-          title="Tutup (Esc)"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-
         {/* ── Dialog Container ─────────────────────────────────────────── */}
         <div
           className={`igm-modal${animOut ? ' anim-out' : ''}`}
@@ -1427,21 +1453,40 @@ export function CommentDrawer({
               )}
             </div>
 
-            {/* ── Interaction Toolbar ──────────────────────────────────── */}
-            <div className="igm-actions">
-              <div className="igm-action-row">
-                <div className="igm-action-left">
+            {/* ── Pinterest-Style Conversation Footer ────────────────── */}
+            <div className="igm-pinterest-footer">
+              {/* Row 1: "Apa pendapatmu?" + Actions (Like, Bookmark, Share) */}
+              <div className="igm-pinterest-top">
+                <div className="igm-pinterest-heading-col">
+                  <h3 className="igm-pinterest-heading">Apa pendapatmu?</h3>
+                  <div className="igm-pinterest-meta">
+                    {isLiked && (
+                      <span style={{ color: 'var(--ig-heart, #FF3040)', marginRight: '2px' }}>❤️</span>
+                    )}
+                    <span>
+                      {likeCount !== null
+                        ? `${likeCount} suka`
+                        : isLiked
+                        ? 'Disukai oleh kamu'
+                        : 'Jadilah yang pertama menyukai'}
+                    </span>
+                    <span>•</span>
+                    <span>{formatFullDate(post.created_at)}</span>
+                  </div>
+                </div>
+
+                <div className="igm-pinterest-actions">
                   {/* Like Button */}
                   <button
                     type="button"
-                    className={`igm-icon-btn${heartAnim ? ' animate-heart-pop' : ''}`}
+                    className={`igm-action-btn${heartAnim ? ' animate-heart-pop' : ''}`}
                     onClick={handleLike}
                     aria-label={isLiked ? 'Batal Suka' : 'Suka'}
                     title={isLiked ? 'Batal Suka' : 'Suka'}
                   >
                     <svg
-                      width="24"
-                      height="24"
+                      width="23"
+                      height="23"
                       viewBox="0 0 24 24"
                       fill={isLiked ? 'var(--ig-heart, #FF3040)' : 'none'}
                       stroke={isLiked ? 'var(--ig-heart, #FF3040)' : 'currentColor'}
@@ -1457,72 +1502,44 @@ export function CommentDrawer({
                     </svg>
                   </button>
 
-                  {/* Comment Focus Button */}
+                  {/* Bookmark Button */}
                   <button
                     type="button"
-                    className="igm-icon-btn"
-                    onClick={() => inputRef.current?.focus()}
-                    aria-label="Tulis komentar"
-                    title="Komentar"
+                    className="igm-action-btn"
+                    onClick={handleBookmark}
+                    aria-label={isSaved ? 'Hapus simpanan' : 'Simpan'}
+                    title={isSaved ? 'Hapus dari simpanan' : 'Simpan postingan'}
                   >
-                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill={isSaved ? 'var(--heading-color)' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                     </svg>
                   </button>
 
                   {/* Share Button */}
                   <button
                     type="button"
-                    className="igm-icon-btn"
+                    className="igm-action-btn"
                     onClick={handleShare}
                     aria-label="Bagikan postingan"
                     title="Bagikan link"
                   >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="22" y1="2" x2="11" y2="13" />
                       <polygon points="22 2 15 22 11 13 2 9 22 2" />
                     </svg>
                   </button>
                 </div>
-
-                {/* Bookmark Button */}
-                <button
-                  type="button"
-                  className="igm-icon-btn"
-                  onClick={handleBookmark}
-                  aria-label={isSaved ? 'Hapus simpanan' : 'Simpan'}
-                  title={isSaved ? 'Hapus dari simpanan' : 'Simpan postingan'}
-                >
-                  <svg
-                    width="23"
-                    height="23"
-                    viewBox="0 0 24 24"
-                    fill={isSaved ? 'var(--heading-color)' : 'none'}
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                  </svg>
-                </button>
               </div>
 
-              {/* Metrics Row */}
-              <div className="igm-metrics-row">
-                <span className="igm-like-count">
-                  {likeCount !== null
-                    ? `${likeCount} suka`
-                    : isLiked
-                    ? 'Disukai oleh kamu'
-                    : 'Jadilah yang pertama menyukai'}
-                </span>
-                <span className="igm-full-date">{formatFullDate(post.created_at)}</span>
-              </div>
-            </div>
-
-            {/* ── Comment Input Area ───────────────────────────────────── */}
-            <div className="igm-input-bar">
               {/* Reply chip */}
               {isReply && replyTarget && (
                 <div className="igm-reply-banner">
@@ -1570,57 +1587,72 @@ export function CommentDrawer({
                 </div>
               )}
 
-              {/* Input Row */}
-              <div className="igm-input-container">
-                <button
-                  type="button"
-                  className="igm-emoji-toggle"
-                  onClick={() => setShowEmojiBar((prev) => !prev)}
-                  aria-label="Tampilkan emoji cepat"
-                  title="Emoji cepat"
-                >
-                  😊
-                </button>
-
-                <input
-                  ref={inputRef}
-                  type="text"
-                  className="igm-text-input"
-                  placeholder={isReply ? `Balas @${replyTarget!.replyToUsername}...` : 'Tambahkan komentar...'}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit();
-                    }
-                    if (e.key === 'Escape') {
-                      setReplyTarget(null);
-                    }
-                  }}
-                  disabled={submitLoading}
-                  aria-label="Tulis komentar"
-                />
-
-                <button
-                  type="button"
-                  className="igm-send-btn"
-                  onClick={handleSubmit}
-                  disabled={!inputValue.trim() || submitLoading}
-                  aria-label="Kirim komentar"
-                  title="Kirim (Enter)"
-                >
-                  {submitLoading ? (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                    </svg>
+              {/* Row 2: Current User Avatar + Seamless Pill Input */}
+              <div className="igm-pinterest-input-row">
+                <div className="igm-user-avatar" title={`Masuk sebagai @${user?.username || 'user'}`}>
+                  {currentUserAvatarSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={currentUserAvatarSrc} alt={user?.username || 'User'} />
                   ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13" />
-                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
+                    <span className="igm-user-avatar-letter">
+                      {(user?.username || 'U').substring(0, 2).toUpperCase()}
+                    </span>
                   )}
-                </button>
+                </div>
+
+                <div className="igm-pill-container">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="igm-pill-input"
+                    placeholder={isReply ? `Balas @${replyTarget!.replyToUsername}...` : 'Tambahkan komentar...'}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                      if (e.key === 'Escape') {
+                        setReplyTarget(null);
+                      }
+                    }}
+                    disabled={submitLoading}
+                    aria-label="Tulis komentar"
+                  />
+
+                  <div className="igm-pill-actions">
+                    <button
+                      type="button"
+                      className="igm-emoji-toggle"
+                      onClick={() => setShowEmojiBar((prev) => !prev)}
+                      aria-label="Tampilkan emoji cepat"
+                      title="Emoji"
+                    >
+                      😊
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`igm-send-btn${inputValue.trim() && !submitLoading ? ' active' : ''}`}
+                      onClick={handleSubmit}
+                      disabled={!inputValue.trim() || submitLoading}
+                      aria-label="Kirim komentar"
+                      title="Kirim (Enter)"
+                    >
+                      {submitLoading ? (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="22" y1="2" x2="11" y2="13" />
+                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
