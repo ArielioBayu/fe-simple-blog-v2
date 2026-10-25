@@ -39,10 +39,15 @@ export function ImageCarousel({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [detectedRatio, setDetectedRatio] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const transitionLockRef = useRef(false);
+
+  const handleImageError = (index: number) => {
+    setFailedImages((prev) => ({ ...prev, [index]: true }));
+  };
 
   // Normalize media items to string file paths
   const images = (media || [])
@@ -147,6 +152,7 @@ export function ImageCarousel({
 
   // ── Single Image: clean, uncropped, adaptive ratio ──────────────────────
   if (total === 1) {
+    if (failedImages[0]) return null;
     const src = uploadService.getImageUrl(images[0]) || images[0];
     return (
       <div
@@ -165,6 +171,7 @@ export function ImageCarousel({
           src={src}
           alt={altText}
           onLoad={handleImageLoad}
+          onError={() => handleImageError(0)}
           style={{
             ...styles.slideImg,
             objectFit,
@@ -222,7 +229,7 @@ export function ImageCarousel({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #0c0d12;
+          background: rgba(0, 0, 0, 0.03);
         }
 
         .carousel-slide img {
@@ -349,13 +356,16 @@ export function ImageCarousel({
               aria-label={`Slide ${idx + 1} of ${total}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                ref={idx === 0 ? imgRef : undefined}
-                src={imgSrc}
-                alt={`${altText} — Foto ${idx + 1}`}
-                loading={idx === 0 ? 'eager' : 'lazy'}
-                onLoad={idx === 0 ? handleImageLoad : undefined}
-              />
+              {!failedImages[idx] ? (
+                <img
+                  ref={idx === 0 ? imgRef : undefined}
+                  src={imgSrc}
+                  alt={`${altText} — Foto ${idx + 1}`}
+                  loading={idx === 0 ? 'eager' : 'lazy'}
+                  onLoad={idx === 0 ? handleImageLoad : undefined}
+                  onError={() => handleImageError(idx)}
+                />
+              ) : null}
             </div>
           );
         })}
@@ -431,7 +441,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     borderRadius: 'var(--radius-md, 12px)',
     overflow: 'hidden',
-    backgroundColor: '#0c0d12',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

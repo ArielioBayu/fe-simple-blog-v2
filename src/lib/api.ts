@@ -3,11 +3,25 @@ export { getFriendlyErrorMessage, HTTP_ERROR_MESSAGES, isNetworkError, NETWORK_E
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9888';
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (API_BASE_URL + '/api/v1');
+export const R2_PUBLIC_URL = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '').trim();
 
 export function getMediaUrl(filePath?: string | null): string | null {
   if (!filePath || typeof filePath !== 'string') return null;
   const trimmed = filePath.trim();
   if (!trimmed) return null;
+
+  // Intercept Cloudflare R2 S3 API endpoint and map to public domain / backend
+  if (trimmed.includes('r2.cloudflarestorage.com')) {
+    const filename = trimmed.split('/').pop()?.split('?')[0];
+    if (filename) {
+      if (R2_PUBLIC_URL) {
+        return `${R2_PUBLIC_URL.replace(/\/+$/, '')}/${filename}`;
+      }
+      // Automatic fallback to local backend uploads when R2_PUBLIC_URL is not yet filled
+      return `${API_BASE_URL}/uploads/${filename}`;
+    }
+  }
+
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
@@ -16,7 +30,7 @@ export function getMediaUrl(filePath?: string | null): string | null {
   ) {
     return trimmed;
   }
-  // Replace Windows backslashes with forward slashes for valid URL paths
+
   const normalized = trimmed.replace(/\\/g, '/');
   const cleanPath = normalized.replace(/^\/+/, '');
   return `${API_BASE_URL}/${cleanPath}`;
