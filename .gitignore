@@ -44,5 +44,6 @@ next-env.d.ts
 .AGENTS.md
 .agents
 
-#docs
-.docs
+# docs
+/docs/
+docs/
