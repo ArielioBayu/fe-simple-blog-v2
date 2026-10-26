@@ -31,7 +31,7 @@ export function ImageCarousel({
   autoPlayInterval = 4500,
   className = '',
   style,
-  objectFit = 'contain',
+  objectFit = 'cover',
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -62,11 +62,21 @@ export function ImageCarousel({
   const isAuto = !aspectRatio || aspectRatio === 'auto';
   const effectiveRatio = isAuto ? (detectedRatio || undefined) : aspectRatio;
 
-  // Auto-detect image's natural aspect ratio so it displays in original dimensions without cropping
+  // Auto-detect image's natural aspect ratio with adaptive bounding:
+  // - Clamping between 3/4 (portrait standard 0.75) and 1.91/1 (landscape standard)
+  //   ensures portrait images fill the card edge-to-edge without letterbox side gaps,
+  //   while avoiding severe cropping.
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
     if (naturalWidth && naturalHeight && isAuto) {
-      setDetectedRatio(`${naturalWidth} / ${naturalHeight}`);
+      const rawRatio = naturalWidth / naturalHeight;
+      if (rawRatio < 0.75) {
+        setDetectedRatio('3 / 4');
+      } else if (rawRatio > 1.91) {
+        setDetectedRatio('1.91 / 1');
+      } else {
+        setDetectedRatio(`${naturalWidth} / ${naturalHeight}`);
+      }
     }
   };
 
@@ -74,7 +84,14 @@ export function ImageCarousel({
     if (imgRef.current && imgRef.current.complete && isAuto) {
       const { naturalWidth, naturalHeight } = imgRef.current;
       if (naturalWidth && naturalHeight) {
-        setDetectedRatio(`${naturalWidth} / ${naturalHeight}`);
+        const rawRatio = naturalWidth / naturalHeight;
+        if (rawRatio < 0.75) {
+          setDetectedRatio('3 / 4');
+        } else if (rawRatio > 1.91) {
+          setDetectedRatio('1.91 / 1');
+        } else {
+          setDetectedRatio(`${naturalWidth} / ${naturalHeight}`);
+        }
       }
     }
   }, [images, isAuto]);
@@ -238,6 +255,7 @@ export function ImageCarousel({
           max-width: 100%;
           max-height: 100%;
           object-fit: ${objectFit};
+          object-position: center;
           display: block;
           margin: 0 auto;
           transition: transform 0.58s cubic-bezier(0.42, 0, 0.12, 1),
@@ -452,7 +470,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     height: '100%',
     maxHeight: '100%',
-    objectFit: 'contain',
+    objectFit: 'cover',
+    objectPosition: 'center',
     display: 'block',
     margin: '0 auto',
   },

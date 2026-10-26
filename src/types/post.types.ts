@@ -21,6 +21,7 @@ export interface Post {
   post_hashtags: string[];
   is_liked: boolean;
   is_saved?: boolean;
+  is_following?: boolean;
   file_path?: string;
   filepath?: string;
   file_type?: string;
@@ -41,6 +42,7 @@ export interface PostDetail {
   post_hashtags: string[];
   is_liked: boolean;
   is_saved?: boolean;
+  is_following?: boolean;
   file_path?: string;
   filepath?: string;
   file_type?: string;

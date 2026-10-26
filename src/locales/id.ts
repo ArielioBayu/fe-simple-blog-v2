@@ -141,6 +141,9 @@ export const id = {
     noRequestsDesc: 'Permintaan follow yang masuk akan ditampilkan di sini.',
     accept: 'Terima',
     reject: 'Tolak',
+    unfollowConfirmTitle: 'Berhenti mengikuti @{username}?',
+    unfollowConfirmDesc: 'Postingan mereka tidak akan lagi muncul di feed beranda Mengikuti Anda.',
+    unfollowConfirmBtn: 'Batal Mengikuti',
   },
   profile: {
     editProfileTitle: 'Edit Profil',

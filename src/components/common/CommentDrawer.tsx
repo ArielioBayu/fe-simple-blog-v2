@@ -113,14 +113,32 @@ export function CommentDrawer({
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ── Sync post state when post changes ────────────────────────────────────
+  // ── Sync post state & fetch real-time like count when post changes ────────
   useEffect(() => {
-    if (post) {
+    let ignore = false;
+    if (post && isOpen) {
       setIsLiked(Boolean(post.is_liked));
       setIsSaved(savedPostIds.includes(post.id));
-      setLikeCount(null);
+
+      // Initial count fallback from post object if available
+      const initialCount = (post as any).likes_count ?? (post as any).like_count ?? null;
+      if (initialCount !== null) {
+        setLikeCount(Number(initialCount));
+      }
+
+      // Fetch fresh like count from server
+      postService.getLikeCount(post.id).then((res) => {
+        if (!ignore && res?.data?.like_count !== undefined) {
+          setLikeCount(res.data.like_count);
+        }
+      }).catch(() => {
+        // ignore
+      });
     }
-  }, [post?.id, post?.is_liked, savedPostIds]);
+    return () => {
+      ignore = true;
+    };
+  }, [post?.id, post?.is_liked, isOpen, savedPostIds]);
 
   // ── Open/close animation & scroll locking ────────────────────────────────
   useLayoutEffect(() => {
@@ -213,13 +231,13 @@ export function CommentDrawer({
       setHeartAnim(true);
       setTimeout(() => setHeartAnim(false), 450);
     }
-    setLikeCount((prev) => (prev !== null ? Math.max(0, prev + (next ? 1 : -1)) : null));
+    setLikeCount((prev) => (prev !== null ? Math.max(0, prev + (next ? 1 : -1)) : (next ? 1 : 0)));
     try {
       await activityService.toggleLike(post.id, next);
       onLikeToggled?.(post.id, next);
     } catch {
       setIsLiked(!next);
-      setLikeCount((prev) => (prev !== null ? Math.max(0, prev + (next ? -1 : 1)) : null));
+      setLikeCount((prev) => (prev !== null ? Math.max(0, prev + (next ? -1 : 1)) : 0));
       onToast('Gagal mengubah status suka.');
     }
   };
@@ -911,22 +929,129 @@ export function CommentDrawer({
           background: var(--modal-bg, #0F172A);
         }
 
-        /* Top Row: "Apa pendapatmu?" + Actions (Heart, Bookmark, Share) */
-        .igm-pinterest-top {
+        /* Row 1: Actions Bar (Like Pill, Share, Bookmark) */
+        .igm-action-bar {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          width: 100%;
           gap: 0.75rem;
         }
 
-        .igm-pinterest-heading-col {
+        .igm-action-bar-left {
           display: flex;
-          flex-direction: column;
-          gap: 0.15rem;
-          min-width: 0;
+          align-items: center;
+          gap: 0.55rem;
         }
 
-        .igm-pinterest-heading {
+        .igm-action-bar-right {
+          display: flex;
+          align-items: center;
+        }
+
+        /* Like Pill Button */
+        .igm-action-pill-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
+          padding: 0.42rem 0.95rem;
+          border-radius: 9999px;
+          border: 1px solid var(--border);
+          background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.05));
+          color: var(--fg-main);
+          cursor: pointer;
+          font-family: var(--font-sans);
+          font-size: 0.86rem;
+          font-weight: 600;
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          outline: none;
+        }
+
+        .igm-action-pill-btn:hover {
+          background: rgba(255, 48, 64, 0.08);
+          border-color: rgba(255, 48, 64, 0.28);
+          color: var(--ig-heart, #FF3040);
+          transform: translateY(-1px);
+        }
+
+        .igm-action-pill-btn.liked {
+          background: rgba(255, 48, 64, 0.12);
+          border-color: rgba(255, 48, 64, 0.38);
+          color: var(--ig-heart, #FF3040);
+        }
+
+        .igm-action-btn-count {
+          font-weight: 700;
+          font-size: 0.92rem;
+          font-family: var(--font-outfit);
+          color: inherit;
+        }
+
+        .igm-action-btn-label {
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: inherit;
+          opacity: 0.85;
+        }
+
+        /* Circular Action Buttons (Share, Bookmark) */
+        .igm-action-circle-btn {
+          width: 36px;
+          height: 36px;
+          min-width: 36px;
+          min-height: 36px;
+          padding: 0;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--border);
+          background: var(--btn-secondary-bg, rgba(15, 23, 42, 0.04));
+          color: var(--fg-main, #0F172A);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          outline: none;
+          flex-shrink: 0;
+        }
+
+        .igm-action-circle-btn svg {
+          width: 19px;
+          height: 19px;
+          display: block;
+          stroke: currentColor;
+          color: inherit;
+          flex-shrink: 0;
+        }
+
+        .igm-action-circle-btn:hover {
+          background: var(--btn-secondary-hover);
+          color: var(--brand-coral, #FF5A36);
+          border-color: rgba(255, 90, 54, 0.35);
+          transform: translateY(-1px);
+        }
+
+        .igm-action-circle-btn.saved {
+          background: rgba(255, 107, 139, 0.12);
+          border-color: rgba(255, 107, 139, 0.35);
+          color: var(--secondary, #FF6B8B);
+        }
+
+        /* Row 2: Meta & Editorial Heading Box */
+        .igm-footer-meta-box {
+          display: flex;
+          flex-direction: column;
+          gap: 0.18rem;
+          width: 100%;
+        }
+
+        .igm-footer-meta-top {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 0.5rem;
+        }
+
+        .igm-footer-heading {
           font-family: var(--font-outfit);
           font-size: 1.05rem;
           font-weight: 700;
@@ -936,50 +1061,23 @@ export function CommentDrawer({
           letter-spacing: -0.01em;
         }
 
-        .igm-pinterest-meta {
+        .igm-footer-date {
           font-size: 0.76rem;
           color: var(--fg-subtle);
-          line-height: 1.3;
           font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
+          white-space: nowrap;
         }
 
-        .igm-pinterest-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          flex-shrink: 0;
+        .igm-footer-likes-text {
+          font-size: 0.82rem;
+          color: var(--fg-muted);
+          margin: 0;
+          line-height: 1.35;
         }
 
-        /* Heart / Like & Action Buttons */
-        .igm-action-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--fg-main);
-          transition: background 0.18s, transform 0.15s, color 0.18s;
-          outline: none;
-        }
-
-        .igm-action-btn:hover {
-          background: var(--btn-secondary-hover);
+        .igm-footer-likes-text strong {
           color: var(--heading-color);
-        }
-
-        .igm-action-btn:active {
-          transform: scale(0.9);
-        }
-
-        .igm-action-btn:focus-visible {
-          box-shadow: 0 0 0 2px var(--social-blue);
+          font-weight: 700;
         }
 
         /* Bottom Row: User Avatar + Seamless Pill Input */
@@ -1455,42 +1553,24 @@ export function CommentDrawer({
 
             {/* ── Pinterest-Style Conversation Footer ────────────────── */}
             <div className="igm-pinterest-footer">
-              {/* Row 1: "Apa pendapatmu?" + Actions (Like, Bookmark, Share) */}
-              <div className="igm-pinterest-top">
-                <div className="igm-pinterest-heading-col">
-                  <h3 className="igm-pinterest-heading">Apa pendapatmu?</h3>
-                  <div className="igm-pinterest-meta">
-                    {isLiked && (
-                      <span style={{ color: 'var(--ig-heart, #FF3040)', marginRight: '2px' }}>❤️</span>
-                    )}
-                    <span>
-                      {likeCount !== null
-                        ? `${likeCount} suka`
-                        : isLiked
-                        ? 'Disukai oleh kamu'
-                        : 'Jadilah yang pertama menyukai'}
-                    </span>
-                    <span>•</span>
-                    <span>{formatFullDate(post.created_at)}</span>
-                  </div>
-                </div>
-
-                <div className="igm-pinterest-actions">
-                  {/* Like Button */}
+              {/* Row 1: Actions (Interactive Like with Counter, Share, Bookmark) */}
+              <div className="igm-action-bar">
+                <div className="igm-action-bar-left">
+                  {/* Interactive Like Pill Button with Count in Number */}
                   <button
                     type="button"
-                    className={`igm-action-btn${heartAnim ? ' animate-heart-pop' : ''}`}
+                    className={`igm-action-pill-btn igm-like-btn${isLiked ? ' liked' : ''}${heartAnim ? ' animate-heart-pop' : ''}`}
                     onClick={handleLike}
                     aria-label={isLiked ? 'Batal Suka' : 'Suka'}
-                    title={isLiked ? 'Batal Suka' : 'Suka'}
+                    title={isLiked ? 'Batal Suka' : 'Sukai postingan ini'}
                   >
                     <svg
-                      width="23"
-                      height="23"
+                      width="20"
+                      height="20"
                       viewBox="0 0 24 24"
                       fill={isLiked ? 'var(--ig-heart, #FF3040)' : 'none'}
                       stroke={isLiked ? 'var(--ig-heart, #FF3040)' : 'currentColor'}
-                      strokeWidth="2"
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       style={{
@@ -1500,44 +1580,81 @@ export function CommentDrawer({
                     >
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                     </svg>
+                    <span className="igm-action-btn-count">
+                      {likeCount !== null ? likeCount : 0}
+                    </span>
+                    <span className="igm-action-btn-label">
+                      Suka
+                    </span>
                   </button>
 
+                  {/* Share Button */}
+                  <button
+                    type="button"
+                    className="igm-action-circle-btn"
+                    onClick={handleShare}
+                    aria-label="Bagikan postingan"
+                    title="Salin tautan cerita"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="igm-action-bar-right">
                   {/* Bookmark Button */}
                   <button
                     type="button"
-                    className="igm-action-btn"
+                    className={`igm-action-circle-btn${isSaved ? ' saved' : ''}`}
                     onClick={handleBookmark}
                     aria-label={isSaved ? 'Hapus simpanan' : 'Simpan'}
                     title={isSaved ? 'Hapus dari simpanan' : 'Simpan postingan'}
                   >
                     <svg
-                      width="22"
-                      height="22"
+                      width="18"
+                      height="18"
                       viewBox="0 0 24 24"
-                      fill={isSaved ? 'var(--heading-color)' : 'none'}
-                      stroke="currentColor"
-                      strokeWidth="2"
+                      fill={isSaved ? 'var(--secondary, #FF6B8B)' : 'none'}
+                      stroke={isSaved ? 'var(--secondary, #FF6B8B)' : 'currentColor'}
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
                       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                     </svg>
                   </button>
-
-                  {/* Share Button */}
-                  <button
-                    type="button"
-                    className="igm-action-btn"
-                    onClick={handleShare}
-                    aria-label="Bagikan postingan"
-                    title="Bagikan link"
-                  >
-                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13" />
-                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                  </button>
                 </div>
+              </div>
+
+              {/* Row 2: Meta & Editorial Heading Box */}
+              <div className="igm-footer-meta-box">
+                <div className="igm-footer-meta-top">
+                  <h3 className="igm-footer-heading">Apa pendapatmu?</h3>
+                  <span className="igm-footer-date">{formatFullDate(post.created_at)}</span>
+                </div>
+                <p className="igm-footer-likes-text">
+                  {likeCount !== null && likeCount > 0 ? (
+                    <>
+                      Disukai oleh <strong>{likeCount} orang</strong>
+                      {isLiked && ' (termasuk kamu)'}
+                    </>
+                  ) : isLiked ? (
+                    'Disukai oleh kamu'
+                  ) : (
+                    'Belum ada suka • Jadilah yang pertama menyukai'
+                  )}
+                </p>
               </div>
 
               {/* Reply chip */}

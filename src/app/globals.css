@@ -1787,6 +1787,80 @@ select:focus-visible {
   animation: callbackProgressBar 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
+/* Feed Post Follow Button */
+.feed-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 32px;
+  padding: 0 0.85rem;
+  border-radius: 9999px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  user-select: none;
+}
+
+.feed-follow-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg-main), 0 0 0 4px var(--brand-coral);
+}
+
+.feed-follow-btn--follow {
+  background: linear-gradient(135deg, #FF5A36 0%, #EC4899 100%);
+  color: #FFFFFF;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(255, 90, 54, 0.25);
+}
+
+.feed-follow-btn--follow:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 90, 54, 0.4);
+  filter: brightness(1.05);
+}
+
+.feed-follow-btn--follow:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.feed-follow-btn--following {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--fg-main);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.feed-follow-btn--following:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+[data-theme="dark"] .feed-follow-btn--following {
+  background: rgba(255, 255, 255, 0.08);
+  color: #E2E8F0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .feed-follow-btn--following:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  color: #F87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.feed-follow-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+
 
 
 

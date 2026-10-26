@@ -139,7 +139,7 @@ export function PostDetailCard({
             altText={post.post_title}
             aspectRatio="auto"
             maxHeight="680px"
-            objectFit="contain"
+            objectFit="cover"
             onImageClick={onCommentClick}
           />
         </div>

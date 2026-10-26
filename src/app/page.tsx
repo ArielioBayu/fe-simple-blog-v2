@@ -426,6 +426,12 @@ function FeedPageContent() {
 
   const allTags = Array.from(new Set(posts.flatMap(p => p.post_hashtags || [])));
 
+  const handleFollowChange = (targetUserId: number, isFollowing: boolean) => {
+    setPosts(prev =>
+      prev.map(p => (p.user_id === targetUserId ? { ...p, is_following: isFollowing } : p))
+    );
+  };
+
   const handleHomeRefresh = async () => {
     setActiveTag('all');
     if (page !== 1) {
@@ -610,6 +616,7 @@ function FeedPageContent() {
                     onUserClick={handleOpenUserProfile}
                     onDeletePost={handleDeletePost}
                     onCommentClick={handleOpenCommentDrawer}
+                    onFollowChange={handleFollowChange}
                   />
                 ))}
               </div>

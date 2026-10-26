@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Post } from '@/types';
-import { postService, uploadService } from '@/services';
+import { postService, uploadService, followService } from '@/services';
 import { PostMenuDropdown, ImageCarousel } from '@/components/common';
-import { useLanguage } from '@/context';
+import { useLanguage, useTheme } from '@/context';
 
 interface PostCardProps {
   post: Post;
@@ -19,6 +19,7 @@ interface PostCardProps {
   onUserClick?: (userId: number, username?: string) => void;
   currentUserId?: number | null;
   onDeletePost?: (postId: number) => void;
+  onFollowChange?: (targetUserId: number, isFollowing: boolean) => void;
   /** Called when user clicks the comment icon — opens the CommentDrawer */
   onCommentClick?: (post: Post) => void;
   /** Real-time comment count override from parent state sync */
@@ -38,11 +39,14 @@ export function PostCard({
   onUserClick,
   currentUserId,
   onDeletePost,
+  onFollowChange,
   onCommentClick,
   commentCountOverride,
   onCommentCountLoaded,
 }: PostCardProps) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const router = useRouter();
   const isAuthor = Boolean(currentUserId && post.user_id && currentUserId === post.user_id);
   const [likeCount, setLikeCount] = useState<number | null>(null);
@@ -50,6 +54,46 @@ export function PostCard({
     commentCountOverride !== undefined ? commentCountOverride : null
   );
   const [avatarError, setAvatarError] = useState(false);
+  const [isFollowing, setIsFollowing] = useState<boolean>(Boolean(post.is_following));
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [showUnfollowModal, setShowUnfollowModal] = useState(false);
+
+  // Synchronize follow status from post prop
+  useEffect(() => {
+    if (post.is_following !== undefined) {
+      setIsFollowing(Boolean(post.is_following));
+    }
+  }, [post.is_following]);
+
+  // If follow status not provided in post object, fetch relationship status for other users
+  useEffect(() => {
+    let ignore = false;
+    if (currentUserId && !isAuthor && post.is_following === undefined && post.user_id) {
+      followService
+        .getRelationship(post.user_id)
+        .then((res) => {
+          if (!ignore && res?.data) {
+            setIsFollowing(Boolean(res.data.is_following));
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      ignore = true;
+    };
+  }, [post.user_id, post.is_following, currentUserId, isAuthor]);
+
+  // Handle Escape key to close unfollow confirmation modal
+  useEffect(() => {
+    if (!showUnfollowModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowUnfollowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showUnfollowModal]);
 
   useEffect(() => {
     setAvatarError(false);
@@ -141,57 +185,165 @@ export function PostCard({
     .map((t) => t.trim().replace(/^#/, ''))
     .filter((t) => t.length > 0);
 
+  const handleFollowClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUserId) {
+      router.push('/login');
+      return;
+    }
+    if (isFollowing) {
+      setShowUnfollowModal(true);
+      return;
+    }
+
+    setIsFollowLoading(true);
+    setIsFollowing(true);
+    onFollowChange?.(post.user_id, true);
+
+    try {
+      const res = await followService.followUser(post.user_id);
+      const isPending = res?.data?.status === 'pending';
+      const actualFollowing = !isPending;
+      setIsFollowing(actualFollowing);
+      onFollowChange?.(post.user_id, actualFollowing);
+    } catch (err) {
+      setIsFollowing(false);
+      onFollowChange?.(post.user_id, false);
+      console.error('Failed to follow user:', err);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
+
+  const handleConfirmUnfollow = async () => {
+    setShowUnfollowModal(false);
+    setIsFollowLoading(true);
+    setIsFollowing(false);
+    onFollowChange?.(post.user_id, false);
+
+    try {
+      await followService.unfollowUser(post.user_id);
+    } catch (err) {
+      setIsFollowing(true);
+      onFollowChange?.(post.user_id, true);
+      console.error('Failed to unfollow user:', err);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
+
   return (
-    <article style={styles.postCard} className="glass glass-interactive feed-card-animated">
-      {/* Card Header: Author Profile */}
-      <div style={styles.cardHeader}>
-        <div
-          style={{ ...styles.authorRow, cursor: onUserClick ? 'pointer' : 'default' }}
-          onClick={() => onUserClick?.(post.user_id, post.username)}
-          role={onUserClick ? 'button' : undefined}
-          tabIndex={onUserClick ? 0 : undefined}
-          onKeyDown={(e) => {
-            if (onUserClick && (e.key === 'Enter' || e.key === ' ')) {
-              e.preventDefault();
-              onUserClick(post.user_id, post.username);
-            }
-          }}
-          title={onUserClick ? `Lihat profil @${post.username}` : undefined}
-        >
-          <div className="story-avatar-wrap" style={{ width: '40px', height: '40px' }}>
-            <div className="story-avatar-inner">
-              {authorAvatarSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={authorAvatarSrc}
-                  alt={post.username}
-                  onError={() => setAvatarError(true)}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <span style={styles.authorLetter}>
-                  {post.username ? post.username.substring(0, 2).toUpperCase() : 'U'}
-                </span>
-              )}
+    <>
+      <article style={styles.postCard} className="glass glass-interactive feed-card-animated">
+        {/* Card Header: Author Profile */}
+        <div style={styles.cardHeader}>
+          <div
+            style={{ ...styles.authorRow, cursor: onUserClick ? 'pointer' : 'default' }}
+            onClick={() => onUserClick?.(post.user_id, post.username)}
+            role={onUserClick ? 'button' : undefined}
+            tabIndex={onUserClick ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (onUserClick && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onUserClick(post.user_id, post.username);
+              }
+            }}
+            title={onUserClick ? `Lihat profil @${post.username}` : undefined}
+          >
+            <div className="story-avatar-wrap" style={{ width: '40px', height: '40px' }}>
+              <div className="story-avatar-inner">
+                {authorAvatarSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={authorAvatarSrc}
+                    alt={post.username}
+                    onError={() => setAvatarError(true)}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={styles.authorLetter}>
+                    {post.username ? post.username.substring(0, 2).toUpperCase() : 'U'}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div style={styles.authorMeta}>
+              <div style={styles.authorNameRow}>
+                <span style={styles.authorName}>@{post.username}</span>
+              </div>
+              <span style={styles.postDate}>{formatDate(post.created_at)}</span>
             </div>
           </div>
-          <div style={styles.authorMeta}>
-            <div style={styles.authorNameRow}>
-              <span style={styles.authorName}>@{post.username}</span>
-            </div>
-            <span style={styles.postDate}>{formatDate(post.created_at)}</span>
+
+          {/* Actions in header: Follow Button & Three dots menu */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            {!isAuthor && (
+              <button
+                type="button"
+                onClick={handleFollowClick}
+                disabled={isFollowLoading}
+                className={`feed-follow-btn ${isFollowing ? 'feed-follow-btn--following' : 'feed-follow-btn--follow'}`}
+                aria-label={isFollowing ? (t.follow?.followingBtn || 'Mengikuti') : (t.follow?.follow || 'Ikuti')}
+                title={isFollowing ? (t.follow?.followingBtn || 'Mengikuti') : (t.follow?.follow || 'Ikuti')}
+              >
+                {isFollowLoading ? (
+                  <div
+                    className="spinner"
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      border: '2px solid currentColor',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                    }}
+                  />
+                ) : isFollowing ? (
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                    <polyline points="17 11 19 13 23 9" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                    <line x1="20" y1="8" x2="20" y2="14" />
+                    <line x1="23" y1="11" x2="17" y2="11" />
+                  </svg>
+                )}
+                <span>{isFollowing ? (t.follow?.followingBtn || 'Mengikuti') : (t.follow?.follow || 'Ikuti')}</span>
+              </button>
+            )}
+
+            <PostMenuDropdown
+              isSaved={isSaved}
+              isAuthor={isAuthor}
+              onBookmarkToggle={() => onBookmarkToggle(post.id)}
+              onShare={() => onShare(post.id, post.post_title)}
+              onDeletePost={onDeletePost ? () => onDeletePost(post.id) : undefined}
+            />
           </div>
         </div>
-
-        {/* Actions in header: Three dots menu (Simpan ke favorit, Bagikan, Hapus) */}
-        <PostMenuDropdown
-          isSaved={isSaved}
-          isAuthor={isAuthor}
-          onBookmarkToggle={() => onBookmarkToggle(post.id)}
-          onShare={() => onShare(post.id, post.post_title)}
-          onDeletePost={onDeletePost ? () => onDeletePost(post.id) : undefined}
-        />
-      </div>
 
       {/* Post Title */}
       <div
@@ -218,7 +370,7 @@ export function PostCard({
             altText={post.post_title}
             aspectRatio="auto"
             maxHeight="620px"
-            objectFit="contain"
+            objectFit="cover"
             onImageClick={() => onCommentClick?.(post)}
           />
         </div>
@@ -369,7 +521,106 @@ export function PostCard({
         </button>
       </div>
     </article>
-  );
+
+    {/* Unfollow Confirmation Modal */}
+    {showUnfollowModal && (
+      <div
+        className="animate-fade-in"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setShowUnfollowModal(false);
+        }}
+      >
+        <div
+          className="glass animate-slide-up"
+          style={{
+            width: '100%',
+            maxWidth: '340px',
+            borderRadius: '24px',
+            padding: '1.75rem 1.5rem 1.25rem',
+            textAlign: 'center',
+            backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: isDark
+              ? '0 25px 60px -15px rgba(0,0,0,0.9)'
+              : '0 25px 60px -15px rgba(0,0,0,0.15)',
+          }}
+        >
+          <div style={{ fontSize: '2.25rem', marginBottom: '0.75rem' }}>👋</div>
+          <h3
+            style={{
+              fontSize: '1rem',
+              fontWeight: 700,
+              margin: '0 0 0.5rem',
+              color: 'var(--heading-color)',
+              fontFamily: 'var(--font-outfit), sans-serif',
+            }}
+          >
+            {(t.follow?.unfollowConfirmTitle || 'Berhenti mengikuti @{username}?').replace('{username}', post.username || '')}
+          </h3>
+          <p
+            style={{
+              fontSize: '0.82rem',
+              color: 'var(--fg-muted)',
+              margin: '0 0 1.5rem',
+              lineHeight: 1.45,
+            }}
+          >
+            {t.follow?.unfollowConfirmDesc || 'Postingan mereka tidak akan lagi muncul di feed beranda Mengikuti Anda.'}
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={handleConfirmUnfollow}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                color: '#EF4444',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {t.follow?.unfollowConfirmBtn || 'Batal Mengikuti'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowUnfollowModal(false)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '12px',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.1)',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                color: 'var(--fg-main)',
+                fontWeight: 600,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+              }}
+            >
+              {t.common?.cancel || 'Batal'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
 }
 
 const styles: Record<string, React.CSSProperties> = {

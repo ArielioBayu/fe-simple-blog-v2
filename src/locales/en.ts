@@ -143,6 +143,9 @@ export const en: LocaleTranslations = {
     noRequestsDesc: 'Incoming follow requests will show up here.',
     accept: 'Accept',
     reject: 'Reject',
+    unfollowConfirmTitle: 'Unfollow @{username}?',
+    unfollowConfirmDesc: 'Their posts will no longer show up in your Following feed.',
+    unfollowConfirmBtn: 'Unfollow',
   },
   profile: {
     editProfileTitle: 'Edit Profile',
